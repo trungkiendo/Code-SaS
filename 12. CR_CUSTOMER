@@ -1,0 +1,759 @@
+--1 1. CIF_PAN_NO
+
+data cfcpub.CR_CUSTOMER_1; set cfcstudy.CR_CUSTOMER; run;
+proc sql; drop table cfcstudy.CR_CUSTOMER; run;
+
+proc sql;
+create table param as
+select key1,value1,value2
+from   idalpub1.O_OCR_GENERAL_PARAM_MB_PRD
+where  key1='APPLICANT_ROLE';
+quit;
+
+proc sql;
+create table applicant_type_define as
+select a.icif_number
+      ,a.appl_ref_num
+      ,a.applicant_type as applicant_type1
+	  ,b.value2 as applicant_type
+
+from idalpub1.O_TRN_OCR_APPL_ICIF_NUM_LINK_PRD a
+left join param b on a.applicant_type=b.value1
+;quit;
+
+/*proc contents data=cfcpub.CR_CUSTOMER_1;*/
+data 	CIF_PAN_NO; 
+set 	idalpub1.O_TRN_OCR_DE_PER_PRD;
+format	applied_date date9.;
+keep 	appl_ref_num
+		applied_date
+		cif_id national_id 
+		previous_id_1_no previous_id_2_no 
+		full_name referee_name icif_number
+		nationality
+		personal_income_tax_no 
+		date_of_birth
+		date_of_issue
+		gender
+		marital_status
+		education
+		num_children
+		personal_email
+		office_email
+		current_residence_time
+		time_at_residence
+		mailing_address
+		perm_residence_book_no
+		residence_status
+		num_dependents
+		temp_residence_book_no
+;
+char = compress(put(input(compress(substr(APPL_REF_NUM,1,6)),6.),6.));
+applied_date  = input(char,yymmdd6.);
+if applied_date >= '01feb2019'd;
+run;
+
+proc sql;
+create table cfcstudy.CIF_PAN_NO as
+select a.*
+     , b.applicant_type
+from CIF_PAN_NO a
+left join applicant_type_define b on a.icif_number=b.icif_number;
+quit;
+
+proc contents data=cfcpub01.an_reportdate;
+
+-- 2. previous_info
+
+<?xml version="1.0" encoding="utf-16"?><Collection><Elements><Element Type="SAS.EG.ProjectElements.CodeTask" IsSelected="true" PosX="120" PosY="12"><Element><Label>2. previous_info</Label><Type>TASK</Type><Container>PFD-kCIBBjGN62LmslL9</Container><ID>CodeTask-dfdLBiHYaaFnMXpC</ID><CreatedOn>637207397003272535</CreatedOn><ModifiedOn>637347981079488243</ModifiedOn><ModifiedBy>Tuong, Le Hai</ModifiedBy><ModifiedByEGID>cfclhtuong</ModifiedByEGID><ModifiedByEGVer>7.100.1.2711</ModifiedByEGVer><HasSerializationError>False</HasSerializationError><InputIDs /></Element><SubmitableElement><UseGlobalOptions>True</UseGlobalOptions><Server>SASMain</Server><HASERROR>False</HASERROR><HASWARNING>False</HASWARNING><HtmlActiveOverride>false</HtmlActiveOverride><RtfActiveOverride>false</RtfActiveOverride><PdfActiveOverride>false</PdfActiveOverride><SasReportActiveOverride>true</SasReportActiveOverride><ListingActiveOverride>false</ListingActiveOverride><AutoDisplayActiveOverride>true</AutoDisplayActiveOverride><PdfStyleOverride>Pearl</PdfStyleOverride><RtfStyleOverride>RTF</RtfStyleOverride><HtmlStyleNameOverride>HtmlBlue</HtmlStyleNameOverride><HtmlStyleCategoryOverride>BuiltIn</HtmlStyleCategoryOverride><HtmlStyleUrlOverride>C:\Program Files\SASHome\SASEnterpriseGuide\7.1\Styles\HtmlBlue.css</HtmlStyleUrlOverride><SasReportStyleNameOverride>HtmlBlue</SasReportStyleNameOverride><SasReportStyleCategoryOverride>BuiltIn</SasReportStyleCategoryOverride><SasReportStyleUrlOverride>C:\Program Files\SASHome\SASEnterpriseGuide\7.1\Styles\HtmlBlue.css</SasReportStyleUrlOverride><GraphDeviceOverride>ActiveX</GraphDeviceOverride><UseProjectSubmitOptions>true</UseProjectSubmitOptions><SubmitToGrid>false</SubmitToGrid><QueueSubmitsForServer>true</QueueSubmitsForServer><ExpectedOutputDataList><DataDescriptor><PATHTYPE>Libref</PATHTYPE><ServerName>SASMain</ServerName><LibraryName>CFCIDALSTU</LibraryName><Label>PREVIOUS_INFO_1</Label><Member>PREVIOUS_INFO_1</Member></DataDescriptor><DataDescriptor><PATHTYPE>Libref</PATHTYPE><ServerName>SASMain</ServerName><LibraryName>WORK</LibraryName><Label>PREVIOUS_INFO</Label><Member>PREVIOUS_INFO</Member></DataDescriptor></ExpectedOutputDataList><Parameters /><ExecutionTimeSpan>PT1.7028852S</ExecutionTimeSpan><JobRecipe><JobRecipe><log>Log-tpBXA3UOETR49THc</log><code>Code-Kx7VcHDPwFua3hwr</code><OutputDataList><ID>ShortCutToData-Qva6BqyaCX88FiGj</ID><ID>ShortCutToData-QLayvCrpf5VmmG6o</ID></OutputDataList><ODSResultsList /></JobRecipe></JobRecipe></SubmitableElement><CodeTask IsClipboardXML="True"><IncludeWrapper>True</IncludeWrapper><Embedded>True</Embedded><Code>/* Previous customer id */
+proc sql;
+create table previous_info as
+select cif_id, icif_number, count(*) as cnt
+from cfcstudy.CIF_PAN_NO
+
+where cif_id is not null
+group by 1,2
+order by 1,2;
+run;
+
+data cfcstudy.previous_info_1;
+set previous_info;
+by cif_id icif_number;
+prev_cust_id = lag(icif_number);
+if first.cif_id then prev_cust_id = "";
+run;
+
+
+</Code><DNA /></CodeTask></Element></Elements></Collection>
+
+-- 3. Occupation
+
+
+proc sql;
+create table cfcstudy.Occupation as
+select a.icif_number,
+/*		a.occupation as occupation_0,*/
+		b.value2 as occupation,
+		a.employee_code,
+		a.company_tax_code,
+		a.company_name,
+		a.last_upd_dt,
+		a.department,
+		a.total_job_exp,
+		a.time_on_job,
+		a.position,
+		a.cmpny_estblshmnt_date,
+		a.company_category,
+		a.emp_bus_type,
+		a.typeof_industry,
+		a.industry
+
+
+		
+from idalpub1.O_TRN_OCR_COM_OCC_PRD a
+left join idalpub1.O_OCR_GENERAL_PARAM_MB_PRD b on a.occupation=b.value1;
+run;
+proc freq data=cfcstudy.Occupation ; table occupation;
+
+
+--4. Income & Expense
+
+/* INCOME & EXPENSE */
+proc sql;
+create table income_expense as
+
+select icif_number 				  as cust_id,
+	   appl_ref_num 			  as app_id,
+	   inc_exp_seq_num 			  as seq, 
+
+	   case when                                      income_exp_type = 'EXPENSE'         then 'EXPENSE'
+		    when income_save_flag = 'INCOME_CCSP' and income_exp_type = 'INCOME'          then 'CCSP' 
+			when income_save_flag = 'INCOME_IPSP' and income_exp_type = 'INCOME'          then 'IPSP' 
+			else income_save_flag                                end as tab,
+
+	   case when income_exp_type = 'EXPENSE' then inc_exp_desc						  
+											 else income_type    end as item_code,
+
+	   income_pay_day 			  as pay_day,
+	   income_payment_method 	  as payment_method,
+
+	   case when income_exp_type = 'EXPENSE' then income_exp_amt
+	   		when income_exp_type = 'INCOME' and income_save_flag = 'INCOME_COMP' then gross_income
+			else 0 end as inc_exp_amt,
+
+	   social_insurance,
+	   house_insurance as health_insurance,
+	   unemployed_insurance,
+	   pit,
+
+	   policy_holder_name 		  							   as insurance_company,
+	   policy_number 			  							   as insurance_book,
+	   input(policy_premium,10.)  							   as insurance_amt,
+	   freq_per_year 		   	  							   as insurance_freq,
+	   input(trim(effective_date),date11.) format date9.       as insurance_effective_date,
+	   time_policy 			      							   as insurance_duration,
+
+	   cc_number 				  							as ccard_number,
+	   issuer_bank_name 		  							as ccard_bank_name,
+	   issuer_bank_type 		  							as ccard_bank_type,
+	   card_type 				  							as ccard_class,
+	   card_limit 				  							as ccard_limit,
+	   outstanding_balance 		   					  	    as ccard_balance,
+	   input(trim(member_since),date11.) format date9.      as ccard_issued_date,
+	   input(trim(valid_till),date11.)   format date9.      as ccard_expired_date
+ 
+from idalpub1.O_TRN_OCR_INCOME_EXPEN_DTLS_PRD
+order by appl_ref_num, tab;
+run;
+
+/* Income */
+proc sql;
+create table income as
+select cust_id,
+	   app_id,
+	   seq,
+	   item_code,
+	   pay_day,
+	   payment_method,
+	   inc_exp_amt,
+       input(social_insurance,10.) as social_insurance,
+	   input(health_insurance,10.) as health_insurance,
+	   input(unemployed_insurance,10.) as unemployed_insurance,
+	   input(pit,10.) as pit,
+	   case when b.value1 like 'OTHER INCOME%' then inc_exp_amt else 0 end as other_income
+from income_expense a
+left join idalpub1.O_OCR_GENERAL_PARAM_MB_PRD b on a.item_code = b.value2 and b.key1 = 'INCOME_TYPE'
+where tab = 'INCOME_COMP'
+order by cust_id, inc_exp_amt desc;
+run;
+
+data payment_method;
+set income;
+keep cust_id payment_method pay_day;
+by cust_id descending inc_exp_amt;
+if first.cust_id;
+run;
+
+proc sql;
+create table income_sum_up as
+select a.cust_id, a.app_id, b.pay_day, b.payment_method,
+	   sum(inc_exp_amt) 										 as total_amt,
+	   sum(social_insurance) 									 as social_insurance,
+	   sum(health_insurance) 								     as health_insurance,
+	   sum(unemployed_insurance) 								 as unemployed_insurance,
+	   sum(pit) 							     			     as pit,
+	   sum(other_income)										 as other_income
+from income a
+left join payment_method b on a.cust_id = b.cust_id
+group by 1,2,3,4;
+run;
+
+/* Expense */
+proc sql;
+create table expense as
+select cust_id,
+	   app_id,
+	   seq,
+	   item_code,
+	   inc_exp_amt
+from income_expense
+where tab = 'EXPENSE';
+run;
+
+proc sql;
+create table expense_sum_up as
+select cust_id, app_id, 
+	   sum(inc_exp_amt) 						as total_amt
+from expense
+group by 1,2;
+run;
+
+/* Insurance */
+proc sql;
+create table insurance as
+select cust_id,
+	   app_id,
+	   seq,
+	   insurance_company,
+	   insurance_book,
+	   insurance_amt,
+	   insurance_freq,
+	   insurance_effective_date,
+	   insurance_duration
+from income_expense
+where tab = 'IPSP'
+order by 1,3;
+run;
+
+data insurance;
+set insurance;
+by cust_id seq;
+if last.cust_id;
+run;
+
+/* Credit card */
+proc sql;
+create table credit_card as
+select cust_id,
+	   app_id,
+	   seq,
+	   ccard_number,
+	   ccard_bank_name,
+	   ccard_bank_type,
+	   ccard_class,
+	   ccard_limit,
+	   ccard_balance,
+	   ccard_issued_date,
+	   ccard_expired_date
+from income_expense
+where tab = 'CCSP'
+order by 1,3;
+run;
+
+data credit_card;
+set credit_card;
+by cust_id seq;
+if last.cust_id;
+run;
+
+-- 5.1 Address
+
+
+proc sql;
+create table cfcstudy.address as
+select icif_number, 
+
+	   max(case when addr_type = 'CR' then input(city_hidden,5.) else . end) as curr_state_id,
+	   max(case when addr_type = 'CR' then city else "" end) 	     as curr_state_desc,
+	   max(case when addr_type = 'CR' then district else "" end)     as curr_district,
+	   max(case when addr_type = 'CR' then ward else "" end)         as curr_ward,
+	
+	   max(case when addr_type = 'PR' then input(city_hidden,5.) else . end)  as permnt_state_id,
+	   max(case when addr_type = 'PR' then city else "" end) 		 as permnt_state_desc,
+	   max(case when addr_type = 'PR' then district else "" end) 	 as permnt_district,
+	   max(case when addr_type = 'PR' then ward else "" end)         as permnt_ward,
+	
+	   max(case when addr_type = 'AWP' then input(city_hidden,5.) else . end)  as off_state_id,
+	   max(case when addr_type = 'AWP' then city else "" end) 		 as off_state_desc,
+	   max(case when addr_type = 'AWP' then district else "" end) 	 as off_district,
+	   max(case when addr_type = 'AWP' then ward else "" end) 	     as off_ward
+
+
+from idalpub1.O_TRN_OCR_COM_ADDR_PRD
+group by 1
+order by 1;
+run;
+
+
+
+
+-- 5.2 Obligation
+
+
+proc sql;
+create table other_obligation as
+select icif_number,
+	   sum(input(ol_lf_emi,10.))  as other_emi,
+	   sum(input(ol_lf_otsdg_pnp_blc,10.)) as other_balance,
+	   min(ol_lf_credit_ins_name) as min_other_cf,
+	   max(ol_lf_credit_ins_name) as max_other_cf,
+	   case when calculated min_other_cf = calculated max_other_cf 
+			then calculated min_other_cf
+			else compress(calculated min_other_cf||' ; '||calculated max_other_cf) 
+			end as other_cf
+from idalpub1.O_TRN_OCR_OTH_LIB_DTLS_PRD    
+where DDE_SUBTAB_ID = 'LENDING_FACILITY'
+group by 1;
+run;
+
+-- 6. General Param
+
+
+proc contents data= idalpub1.O_OCR_GENERAL_PARAM_MB_PRD; run;
+
+proc sql;
+create table O_OCR_GENERAL_PARAM_MB_PRD as
+select key1 format $20., value1 format $10., value2 format $100.
+from idalpub1.O_OCR_GENERAL_PARAM_MB_PRD
+where key1 in ('POSITION', 'COMPANY_CATEGORY', 'OCC_TYPE', 'TYPEOF_INDUSTRY', 'INDUSTRY', 'RESIDENCE_STATUS');
+run;
+
+data 	O_OCR_GENERAL_PARAM_MB_PRD;
+length 		key1  $20.
+			value1 $10.
+			value2 $100.;
+informat 	key1  $20.
+			value1 $10.
+			value2 $100.;
+set 	O_OCR_GENERAL_PARAM_MB_PRD;
+run;
+proc contents data=O_OCR_GENERAL_PARAM_MB_PRD;
+
+
+proc sql;
+create table O_TRN_OCR_RO_DTLS_PRD as
+select APPL_REF_NUM,
+	input(NDI,4.) as NDI format 5.2, 
+	input(DBR,4.) as DBR format 5.2, 
+	input(PTI,4.) as PTI format 5.2, 
+	input(MUE,4.) as MUE format 5.2
+
+from 	idalpub1.O_TRN_OCR_RO_DTLS_PRD
+
+;run;
+/*check duplicate*/
+/*proc sql;*/
+/*create table dup as*/
+/*select * from */
+/*group by APPL_REF_NUM*/
+/*having count(APPL_REF_NUM)>1*/
+/*;run;*/	
+
+-- 7. CR_CUSTOMER_PRD
+
+
+proc sql;
+create table CR_CUSTOMER_PRD_draf as
+
+select distinct	'new' as flag_core,
+		
+
+/* Identification info */
+	   a.cif_id 							  format $50.	as cif,
+	   a.national_id						  format $50.   as pan_no,
+	   a.previous_id_1_no 					  format $50.	as pan_no_1,
+	   a.previous_id_2_no 					  format $50.	as pan_no_2,
+	   input(trim(a.date_of_issue),date11.)   format date9. as national_id_issued_date,
+
+
+	   a.appl_ref_num     					  format $20.   as app_id,
+	   a.applicant_type,
+/*	   input(a.icif_number,8.)      		  format 8.     as cust_id,*/
+	   a.full_name 		  					  format $100.  as cust_name,
+
+	   case when a.referee_name = 'EXIST' 
+			then 'Existing'
+			when a.referee_name = 'NEW' 
+			then 'New' 
+		    else 'Other' end 				  format $8.    as existing_cust,
+
+	   input(k.prev_cust_id,8.) 	  		  format 8.     as previous_cust_id,
+
+/* Demographic info */
+	   case when f.occupation like  'SA%' 
+			then 'Salaried'
+			when f.occupation like 'SELF%' 
+			then 'Self-employed'
+		    else 'Other' end 				  format $20.   as cust_category,
+
+	   case when a.nationality = 'VIE' 
+			then 'Vietnam' 
+			else 'Other' end      			  format $50.   as nationality,
+
+	   a.personal_income_tax_no  		      format $20.   as tax_no,
+	   datepart(a.date_of_birth) 			  format date9. as dob,
+
+	   intck('year',
+			 datepart(a.date_of_birth),
+			 "&sysdate"d)  					  format 3.     as age,
+
+	   a.gender								  format $20.   as gender,
+
+	   case when a.marital_status = 'DIV' 
+			then 'D'
+			when a.marital_status = 'MRD' 
+			then 'M'
+			when a.marital_status = 'SIN' 
+			then 'S'
+			when a.marital_status = 'SPD' 
+			then 'P'
+			when a.marital_status = 'WOD' 
+			then 'W'
+			else 'Other' end 				  format $20.   as marital_status,
+
+	   case when a.education = 'COL'  
+			then 'College'
+	   		when a.education = 'ENGI' 
+			then 'Engineering'
+			when a.education = 'HS'   
+			then 'High school'
+			when a.education = 'PG'   
+			then 'Post graduate'
+			when a.education = 'PROF' 
+			then 'Professional'
+			when a.education = 'UNI'  
+			then 'University'
+			else 'Other' end 				  format $20.   as education,
+
+	   ""       							  format $30.   as qualification,
+	   a.num_children 			  			  format 2.     as no_of_children,
+	   input(a.num_dependents,2.) 			  format 2.     as no_of_dependent,
+	   a.RESIDENCE_STATUS					  format $20.   as residence_type,
+	   r.value2 						      format $100.  as residence_type_desc,
+
+/* Financial info */
+
+	   .									  format 10. 	as gross_income,
+	   .									  format 10. 	as previous_income,
+	   d.total_amt 				 		   	  format 10.    as actual_income,
+	   e.total_amt 						      format 10.    as expense,
+	   d.social_insurance					  format 10.    as social_insurance,
+	   d.health_insurance					  format 10.    as health_insurance,
+	   d.unemployed_insurance				  format 10.    as unemployed_insurance,
+	   d.pit					  			  format 10.    as pit,
+	   d.other_income						  format 10.    as other_income,
+	   .									  format 10.    as emi,
+	   j.other_emi  		   	      		  format 10.    as other_emi,
+	   j.other_balance       				  format 10.    as other_balance,
+	   j.other_cf 				  			  format $100.  as other_CF,
+	   s.PTI,
+	   s.DBR,
+
+/* Company & Occupation */
+	   f.employee_code 			 			  format $20.   as employer_id,
+	   f.company_tax_code 		 			  format $20.   as employer_tax_code,
+	   f.company_name 			 			  format $200.  as employer_name,
+	   m.value2 				 			  format $50.   as booked_category,
+	   case when  m.value2 ='Cannot Process'        then 'BlackList' 
+	   		when  m.value2 ='Limited Service Group' then 'Block' 
+			else  m.value2 end as booked_category_1,
+	   t.value2								  format $50.   as current_category,
+	   case when  t.value2 ='Cannot Process'        then 'BlackList' 
+	   		when  t.value2 ='Limited Service Group' then 'Block'  
+			else  t.value2  end as current_category_1,
+	   ""									  format $20.   as sub_category,
+	   datepart(f.last_upd_dt) 			 	  format date9. as encoded_date,
+	   n.value2 				    		  format $100.  as biztype,
+	   o.pp				 		 			  format $200.  as industry,
+	   p.value2 				 			  format $200.  as industry_sub,
+	   datepart(f.cmpny_estblshmnt_date)   	  format date9.	as established_date,
+	   l.value2                  			  format $100.  as occupation,
+	   f.department							  format $100.  as department,
+	   input(f.total_job_exp,4.) 			  format 4.     as total_toj_month,
+	   input(f.time_on_job,4.)   			  format 4.     as present_toj_month,
+	   
+/* Residence address */
+	   a.personal_email						  format $100.  as personal_email,
+	   a.office_email						  format $100.  as office_email,	
+
+ /*Fix:	   a.resisdence_location 				  format $20.   as residence_area,*/
+
+	   	case 	when g.curr_state_id     in (3,34) 						     	      then 'a.HN'
+	   			when g.curr_state_id not in (3,7,13,20,21,34) and q.region = 'North'  then 'b.HN40'
+				when g.curr_state_id = 7									 	      then 'c.SIP - BAC NINH'
+				when g.curr_state_id = 13									 	   	  then 'd.SIP - HAI DUONG'
+				when g.curr_state_id = 21									 	      then 'e.SIP - VINH PHUC'
+				when g.curr_state_id = 20									 	      then 'f.SIP - THAI NGUYEN'
+				when g.curr_state_id in (15,17,35)							 	      then 'g.SIP - NAM DINH'
+				when g.curr_state_id not in (12,19,43,44,46) and q.region = 'Central' then 'h.CENTRAL'
+				when g.curr_state_id = 12									 	      then 'i.SIP - DA NANG'
+				when g.curr_state_id = 19									 	      then 'j.SIP - QUANG NAM'
+				when g.curr_state_id = 43									 	      then 'k.SIP - QUANG NGAI'
+				when g.curr_state_id = 46									 	      then 'l.SIP - KHANH HOA'
+				when g.curr_state_id = 44									 	      then 'm.SIP - BINH DINH'
+				when g.curr_state_id = 52									 	      then 'n.SIP - VUNG TAU'
+				when g.curr_state_id not in (2,4,49,52,58) and q.region = 'South'     then 'o.SOUTH'
+				when g.curr_state_id = 2									 	      then 'p.HCM'
+				when g.curr_state_id in (4,49,58)								      then 'q.HCM40'
+				when g.curr_state_id = 42								              then 's.SIP - HUE'	
+																					  else 'r.Others' 			 
+				end											 format $20.   as residence_area,
+
+		case 	when g.curr_state_desc = 'TP. HÀ NỘI'       then 'a. North - '||g.curr_state_desc
+		   		when g.curr_state_desc = 'TỈNH BẮC NINH'    then 'b. North - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH HẢI DƯƠNG'   then 'c. North - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH HƯNG YÊN'    then 'd. North - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH BẮC GIANG'   then 'e. North - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH VĨNH PHÚC'   then 'f. North - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH THÁI NGUYÊN' then 'g. North - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH THANH HÓA'   then 'h. North - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH NAM ĐỊNH'   	then 'i. North - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH THÁI BÌNH'   then 'j. North - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH HÀ NAM'   	then 'k. North - '||g.curr_state_desc
+				when g.curr_state_desc in ('TỈNH LAI CHÂU','TỈNH CAO BẰNG','TỈNH TUYÊN QUANG','TỈNH LÀO CAI',
+											   'TỈNH SƠN LA','TỈNH LẠNG SƠN','TỈNH HÀ GIANG','TỈNH ĐIỆN BIÊN',
+											   'TỈNH NGHỆ AN','TỈNH NINH BÌNH','TỈNH PHÚ THỌ','TỈNH YÊN BÁI',
+											   ,'TỈNH HÀ TÂY','TỈNH HÒA BÌNH',
+											   ,'TP. HẢI PHÒNG','TỈNH BẮC KẠN') 
+										   					then 'l. North - Others'
+
+				when g.curr_state_desc = 'TP. ĐÀ NẴNG'     	then 'm. Central - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH QUẢNG NAM'  	then 'n. Central - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH KHÁNH HÒA'  	then 'o. Central - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH QUẢNG NGÃI' 	then 'p. Central - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH BÌNH ĐỊNH'  	then 'q. Central - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH THỪA THIÊN-HUẾ'  	then 'r1. Central - '||g.curr_state_desc
+				when g.curr_state_desc in ('TỈNH KON-TUM','TỈNH QUẢNG BÌNH','TỈNH GIA LAI',
+											   'TỈNH ĐĂK NÔNG','TỈNH QUẢNG TRỊ','TỈNH NINH THUẬN','TỈNH HÀ TĨNH',
+											   'TỈNH BÌNH THUẬN','TỈNH ĐĂK LĂK','TỈNH PHÚ YÊN')
+															   	then 'r. Central - Others'
+
+				when g.curr_state_desc = 'TP. HỒ CHÍ MINH'      then 's. South - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH BÌNH DƯƠNG' 		then 't. South - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH ĐỒNG NAI' 		then 'u. South - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH LONG AN' 		then 'v. South - '||g.curr_state_desc
+				when g.curr_state_desc = 'TỈNH BÀ RỊA-VŨNG TÀU' then 'w. South - '||g.curr_state_desc
+				when g.curr_state_desc = 'TP. CẦN THƠ' 			then 'x. South - '||g.curr_state_desc
+
+				when g.curr_state_desc in ('TỈNH AN GIANG','TỈNH BẾN TRE','TỈNH TRÀ VINH','TỈNH HẬU GIANG',
+											   'TỈNH VĨNH LONG','TỈNH ĐỒNG THÁP','TỈNH TÂY NINH','TỈNH TIỀN GIANG',
+											   'TỈNH BẠC LIÊU','TỈNH LÂM ĐỒNG','TỈNH KIÊN GIANG','TỈNH CÀ MAU',
+											   'TỈNH BÌNH PHƯỚC','TỈNH SÓC TRĂNG')
+																then 'y. South - Others'
+																else 'z. Unknown' end 
+					as location,
+
+	   a.time_at_residence 	 	  							as curr_TAR_month,
+/*	   a.CURRENT_RESIDENCE_TIME				  format 4.     as time_at_residence,*/
+	   g.curr_state_id 		  	       						as curr_state_id,
+	   g.curr_state_desc					  format $100.  as curr_state_desc,
+	   g.curr_district						  format $100.  as curr_district,
+	   g.curr_ward,
+/*	   input(g.permnt_state_id,3.) 		      format 3.     as permnt_state_id,*/
+	   g.permnt_state_desc					  format $100.  as permnt_state_desc,
+	   g.permnt_district					  format $100.  as permnt_district,
+	   g.permnt_ward,
+/*	   input(g.off_state_id,3.) 		      format 3.     as off_state_id,*/
+	   g.off_state_desc						  format $100.  as off_state_desc,
+	   g.off_district						  format $100.  as off_district,
+ 	   g.off_ward,
+	   case when a.mailing_address = 'PR'                then 'Permanent residence'
+	   		when a.mailing_address in ('CR','RES')		 then 'Current residence'
+			when a.mailing_address in ('HO','OFF','AWP') then 'Office'
+			else 'Other'          		 
+	   end 									  format $20.   as mail_address,	  	   
+
+	   a.perm_residence_book_no				  format $20.   as perm_residence_book_no,
+	   a.temp_residence_book_no				  format $20.   as KT3,
+
+/* Insurance & Credit card */
+	   h.insurance_company					  format $100.  as insurance_company,
+	   h.insurance_amt						  format 10.    as insurance_amt,
+	   case when d.payment_method = 'C' 
+			then 'Cash'
+			when d.payment_method = 'T' 
+			then 'Transfer'
+			when d.payment_method = 'CT' 
+			then 'Mix of Cash and Transfer'
+			else 'Other' end 				  format $30.   as salary_type,
+
+	   d.pay_day							  format $30.   as salary_date,
+	   i.ccard_class						  format $30.   as ccard_issuer,
+	   i.ccard_bank_name					  format $100.  as ccard_bank,
+	   i.ccard_bank_type					  format $30.   as ccard_bank_type,
+	   i.ccard_limit						  format 10.    as ccard_limit,
+	   i.ccard_issued_date					  format date9. as ccard_issued_date,
+	   i.ccard_expired_date					  format date9. as ccard_expired_date,
+	   i.ccard_balance						  format 10.    as ccard_balance
+
+	 
+
+from cfcstudy.CIF_PAN_NO						     		 a
+/*left join idalpub1.O_TRN_OCR_DE_SALES_POLICY_PRD b on a.appl_ref_num 	 = b.appl_ref_num*/
+left join income_sum_up 					     d on a.icif_number  	 = d.cust_id
+left join expense_sum_up 					     e on a.icif_number  	 = e.cust_id
+left join cfcstudy.Occupation					 f on a.icif_number      = f.icif_number
+/*left join idalpub1.O_OCR_COMPANY_MASTER_MB_PRD   s on f.company_tax_code = s.company_tax_code*/
+/*											  	   and s.company_tax_code is not null*/
+left join cfcstudy.address 							     g on a.icif_number  	 = g.icif_number
+left join insurance 						     h on a.icif_number  	 = h.cust_id
+left join credit_card 						     i on a.icif_number  	 = i.cust_id
+left join other_obligation 					     j on a.icif_number 	 = j.icif_number 
+left join cfcstudy.previous_info_1 				 k on a.cif_id 		     = k.cif_id 
+											  	   and a.icif_number     = k.icif_number
+left join O_OCR_GENERAL_PARAM_MB_PRD    		l on f.position         = l.value1
+											  	   and l.key1            = 'POSITION'
+left join O_OCR_GENERAL_PARAM_MB_PRD 			 m on f.company_category = m.value1
+											  	   and m.key1 			 = 'COMPANY_CATEGORY'
+left join O_OCR_GENERAL_PARAM_MB_PRD 			 t on f.company_category = t.value1
+											  	   and t.key1 			 = 'COMPANY_CATEGORY'
+left join O_OCR_GENERAL_PARAM_MB_PRD 			 n on f.emp_bus_type     = n.value1
+											  	   and n.key1 			 = 'OCC_TYPE'
+
+left join O_OCR_GENERAL_PARAM_MB_PRD 			 p on f.industry  		 = p.value1
+											  	   and p.key1 			 = 'INDUSTRY'
+left join cfcstudy.rcp_industry	 	 			o on p.value2			 = o.industry_sub
+											  	  
+left join 	cfcstudy.rcp_location				 q 	on g.curr_state_id = q.stateid
+left join O_OCR_GENERAL_PARAM_MB_PRD 	 		r 	on a.residence_status = r.value1
+											  	  	 and r.key1 			= 'RESIDENCE_STATUS'
+left join O_TRN_OCR_RO_DTLS_PRD		            s	on a.appl_ref_num       = s.APPL_REF_NUM
+
+/*where a.place_of_issue is null*/
+order by a.cif_id, a.icif_number;
+
+run;
+proc contents data=cfcstudy.rcp_industry;
+proc sql;
+update CR_CUSTOMER_PRD_draf set curr_state_desc='TỈNH BÌNH ĐỊNH' where curr_state_desc='TỈNH BÌNH ĐỊNHTỈNH BÌ';
+run;
+
+proc sql;
+update CR_CUSTOMER_PRD_draf set actual_income = 14455307 where  app_id = '1906060001343373';
+run;
+proc sql;
+update CR_CUSTOMER_PRD_draf set curr_state_desc = 'TỈNH LONG AN' where  curr_state_desc = 'TỈNH LONG A';
+run;
+/*proc sql;*/
+/*update CR_CUSTOMER_PRD_draf set curr_state_desc = 'TP. HÀ NỘI'  where  curr_state_desc = 'TỈNH HÀ TÂY';*/
+/*run;*/
+
+
+
+
+
+data CR_CUSTOMER_PRD_draf1 (drop= 
+/*national_id_issued_date*/
+/*customer_class*/
+no_of_children
+social_insurance
+health_insurance
+unemployed_insurance
+pit
+other_income
+other_CF
+sub_category
+established_date
+office_email
+/*time_at_residence*/
+perm_residence_book_no
+insurance_amt
+ccard_balance);
+set CR_CUSTOMER_PRD_draf;
+;run;
+
+
+data old;
+set cfcpub.CR_CUSTOMER;
+drop
+run_date
+national_id_issued_place
+passport
+permnt_state_id
+off_state_id
+;
+flag_core = 'old';
+applicant_type='';
+booked_category_1=booked_category;
+current_category_1=current_category;
+;run;
+
+
+/* MERGE */
+data CR_CUSTOMER_final (compress=yes) ;
+set CR_CUSTOMER_PRD_draf1
+	old;
+run;
+
+/*remove cases*/
+
+proc sql;
+delete from CR_CUSTOMER_final where app_id='2006160001844734';
+delete from CR_CUSTOMER_final where app_id='2006100001834613';
+delete from CR_CUSTOMER_final where app_id='2006160001845439';
+delete from CR_CUSTOMER_final where app_id='2006170001848057';
+run;
+
+
+data cfcstudy.cr_customer;
+set  CR_CUSTOMER_final; 
+if   applicant_type in ('' 'MAIN APPLICANT');
+run;
+
+
+
+proc contents data=cfcstudy.cr_customer;
+proc contents data=cfcpub.cr_customer_1;
+
+data cfcstudy.cr_customer_prd;
+set  CR_CUSTOMER_final; 
+if   applicant_type in ('' 'MAIN APPLICANT');
+if   flag_core='new';
+run;
+
+proc sql;
+create table cfcstudy.cr_customer_auto as
+select *
+from  CR_CUSTOMER_final
+where applicant_type not in  ('' 'MAIN APPLICANT')
+and flag_core='new';
+quit;
+
+
+
+
+
+/**/
+/*data cfcstudy.CR_CUSTOMER (compress=yes);*/
+/*set cfcstudy.CR_CUSTOMER;*/
+/*run;*/
+
+
+/**/
+/*proc sql; drop table cfcstudy.CIF_PAN_NO;*/
+/*drop table cfcstudy.previous_info_1;*/
+/*drop table cfcstudy.previous_info_1;*/
+/*drop table cfcstudy.address;*/
+/*drop table cfcstudy.Occupation;*/
+/*run;*/
+
