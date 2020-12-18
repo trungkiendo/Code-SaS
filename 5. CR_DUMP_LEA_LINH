@@ -1,0 +1,367 @@
+-- 0. cfcpub.cr_dump_lea_2019_linh
+/**/
+/*%let cutoff_date 	= 01feb19;*/
+/*%let reportdate		= 31dec19;*/
+/**/
+/*proc sql;*/
+/*create table los_to_lms as*/
+/*select catx("-",MPI_CUST_ID,MPI_CON_ID, MPI_PROJ_ID) format $20. as REF_TEXT*/
+/*		,	MPI_CUST_ID*/
+/*		,	MPI_CON_ID*/
+/*		,	MPI_PROJ_ID*/
+/*		,	MPI_APP_REF_NO*/
+/*		,	MPI_LEGACY_ID as AGREEMENTNO*/
+/*		,	mdi_disb_amt*/
+/*		, 	MPI_PROJ_COST as SANCTIONAMT*/
+/*		, 	MPI_DISB_DT as DISBURSEDATE*/
+/*		,	MPI_ST_DT as AUTHDATE*/
+/*		, 	MPI_REPMT_DT as FIRST_EMI_DATE*/
+/*		, 	MPI_CLS_DT as CLOSED_DATE*/
+/*from 		idalpub1.M_M_PROJ_INFO_PRD a*/
+/*left join 	idalpub1.M_M_DISB_INFO_PRD b on 	catx("-",MPI_CUST_ID,MPI_CON_ID, MPI_PROJ_ID) = catx("-",MDI_CUST_ID,MDI_CON_ID,MDI_PROJ_ID) */
+/*										 and 	b.MDI_PAY_MODE = 'P'*/
+/*where 	MPI_DISB_DT is not null */
+/*and 	MDI_CUST_ID is not null;*/
+/*run;*/
+/**/
+/*proc sort data 	= 	idalpub1.m_m_proj_dq_hist_prd out	=	dump;*/
+/*by 					mpdh_cust_id */
+/*					mpdh_con_id */
+/*					mpdh_proj_id */
+/*					mpdh_dq_eff_dt;*/
+/*where 				"&cutoff_date"d < datepart(mpdh_dq_eff_dt) <= "&reportdate"d;*/
+/**/
+/*proc sql;*/
+/*create table dump_history as*/
+/*select 	b.AGREEMENTNO*/
+/*		,	b.MPI_APP_REF_NO as APP_ID*/
+/*		, 	catx("-",mpdh_cust_id,mpdh_con_id,mpdh_proj_id) format $20. as ref_text*/
+/*		,	SANCTIONAMT*/
+/*		, 	DISBURSEDATE*/
+/*		, 	FIRST_EMI_DATE*/
+/*		, 	CLOSED_DATE*/
+/*		, 	AUTHDATE*/
+/*		,	day(datepart(FIRST_EMI_DATE)) as due_day*/
+/*		,	mpdh_dq_eff_dt*/
+/*		,	put(datepart(mpdh_dq_eff_dt),monyy5.) as month*/
+/*		,	mpdh_last_paid_dt as LASTPAYMENTDATE*/
+/*		,	mpdh_dpd*/
+/*		,	case when mpdh_final_stat in ("TB7" "TB8" "TB9" "TB10" "TB11" "TB12") then "TB6" */
+/*			when mpdh_final_stat = "REGLR" then "REGULAR" else mpdh_final_stat end as bucket*/
+/*		,	mpdh_bal_string*/
+/*from 		dump a*/
+/*left join 	los_to_lms b on catx("-",mpdh_cust_id,mpdh_con_id,mpdh_proj_id) = b.REF_TEXT*/
+/*where 	b.MPI_APP_REF_NO is not null */
+/*and 	datepart(mpdh_dq_eff_dt) > datepart(DISBURSEDATE)*/
+/*;*/
+/*run;*/
+/**/
+/*proc sql; drop table dump; run;*/
+/**/
+/*data  dump_history; */
+/*keep 	STARTDATE	AGREEMENTNO	LOANSTATUS CLOSED_DATE	DPD	BUCKET	PRINBALANCE	ARREARINT	ARREARPRIN	due_day;*/
+/*retain 	STARTDATE	AGREEMENTNO	LOANSTATUS CLOSED_DATE	DPD	BUCKET	PRINBALANCE	ARREARINT	ARREARPRIN	due_day;*/
+/*set dump_history;*/
+/**/
+/*t 	= findc(mpdh_bal_string,'~');*/
+/*t2 	= findc(mpdh_bal_string,'~',t+1);*/
+/*t3 	= findc(mpdh_bal_string,'~',t2+1);*/
+/*format 	PRINBALANCE ARREARPRIN ARREARINT 15.2*/
+/*		STARTDATE datetime20.*/
+/*		LOANSTATUS $8.*/
+/*		;*/
+/*DPD = input(put(mpdh_dpd, 4.), $4.);*/
+/*ARREARPRIN 		= substr(mpdh_bal_string,1,t-1);*/
+/*ARREARINT 		= substr(mpdh_bal_string,t+1,t2-1-t);*/
+/*PRINBALANCE 	= substr(mpdh_bal_string,t2+1,t3-1-t2);*/
+/*STARTDATE 		= dhms(datepart(mpdh_dq_eff_dt),00,00,00);*/
+/**/
+/*if CLOSED_DATE ^= . and datepart(STARTDATE) > datepart(CLOSED_DATE) then LOANSTATUS = 'Matured'; else LOANSTATUS = 'Active';*/
+/*if LOANSTATUS 	= 'Matured' then do; BUCKET = 'NA'; end;*/
+/*run;*/
+/**/
+/*data cfcpub.cr_dump_linh_2019; set dump_history; run;*/
+/*proc sql; drop table dump_history; run;*/
+/**/
+/**/
+/**/
+/*data closed_list;*/
+/*keep 	STARTDATE	AGREEMENTNO	LOANSTATUS	CLOSED_DATE DPD	BUCKET	PRINBALANCE	ARREARINT	ARREARPRIN	due_day;*/
+/*retain 	STARTDATE	AGREEMENTNO	LOANSTATUS	CLOSED_DATE DPD	BUCKET	PRINBALANCE	ARREARINT	ARREARPRIN	due_day;*/
+/*set los_to_lms;*/
+/*format 	LASTPAYMENTDATE datetime20. ;*/
+/**/
+/*LOANSTATUS = 'Matured';*/
+/*LASTPAYMENTDATE = .;*/
+/*DPD = '0';*/
+/*BUCKET = 'NA';*/
+/*PRINBALANCE = 0;*/
+/*ARREARINT = 0;*/
+/*ARREARPRIN = 0;*/
+/*due_day = day(datepart(FIRST_EMI_DATE));*/
+/*where CLOSED_DATE is not null;*/
+/*run;*/
+/**/
+/**/
+/*data generate_matured;*/
+/*set closed_list;*/
+/*if datepart(CLOSED_DATE) > "&cutoff_date"d then first_date = datepart(CLOSED_DATE)+1;*/
+/*else first_date="&cutoff_date"d + 1;*/
+/*last_date = "&reportdate"d;*/
+/**/
+/*format i date9. STARTDATE datetime20.;*/
+/*do i= first_date to last_date;    */
+/*	month = put(i,monyy5.);*/
+/*	temp = mdy(month(i),day(i),year(i));*/
+/*	STARTDATE=dhms(temp,0,0,00);*/
+/*	date = day(i);*/
+/*	output;	*/
+/*end;*/
+/*run;*/
+/**/
+/*proc append base	=	cfcpub.cr_dump_linh_2019 data=generate_matured force;*/
+/*proc sort 	data	=	cfcpub.cr_dump_linh_2019 nodupkey;by agreementno startdate;*/
+/**/
+/*proc sql;*/
+/*create table cfcpub.cr_dump_linh_2019 as*/
+/*select 		a.**/
+/*		,	dhms((b.disbursed_date),00,00,00) format datetime20. as DISBURSEDATE*/
+/*		,	b.loan_amt as SANCTIONAMT*/
+/*		, 	dhms((b.first_emi_date),00,00,00) format datetime20. as FIRSTEMIDATE*/
+/*		,	b.authorized_date as AUTHDATE*/
+/*		,	(datepart(a.STARTDATE) - 1) format date7. as real_date*/
+/**/
+/*from cfcpub.cr_dump_linh_2019 a*/
+/*left join cfcstudy.cr_application b on a.AGREEMENTNO = b.AGREEMENTNO;*/
+/*run;*/
+/**/
+/*proc contents data=cfcpub.cr_dump_linh_2019;*/
+/*proc datasets lib = work kill;run;*/
+
+-- 1. cfcpub.cr_dump_lea_2020_linh
+
+data cfcstudy.cr_application_1; 
+set cfcstudy.cr_application; 
+keep AGREEMENTNO  disbursed_date loan_amt first_emi_date authorized_date;
+where AGREEMENTNO ^= "";
+run;
+/*proc contents data=cfcstudy.cr_application_1;*/
+
+
+proc contents data=idalpub1.M_M_PROJ_INFO_PRD ;
+proc contents data=idalpub1.M_M_DISB_INFO_PRD ;
+proc contents data=idalpub1.m_m_proj_dq_hist_prd ;
+
+/*proc freq data=idalpub1.M_M_PROJ_DQ_HIST_PRD; table mpdh_dq_eff_dt;*/
+
+%let cutoff_date 	= 01jan20;
+/*%let reportdate 		= 14feb19;*/
+/*proc sql; select reportdate into:reportdate from cfcpub01.an_reportdate; run;*/
+
+proc sql;
+create table los_to_lms as
+select catx("-",MPI_CUST_ID,MPI_CON_ID, MPI_PROJ_ID) format $20. as REF_TEXT
+		,	MPI_CUST_ID
+		,	MPI_CON_ID
+		,	MPI_PROJ_ID
+		,	MPI_APP_REF_NO
+		,	MPI_LEGACY_ID as AGREEMENTNO
+		,	mdi_disb_amt
+		, 	MPI_PROJ_COST as SANCTIONAMT
+		, 	MPI_DISB_DT as DISBURSEDATE
+		,	MPI_ST_DT as AUTHDATE
+		, 	MPI_REPMT_DT as FIRST_EMI_DATE
+		, 	MPI_CLS_DT as CLOSED_DATE
+from 		idalpub1.M_M_PROJ_INFO_PRD a
+left join 	idalpub1.M_M_DISB_INFO_PRD b on 	catx("-",MPI_CUST_ID,MPI_CON_ID, MPI_PROJ_ID) = catx("-",MDI_CUST_ID,MDI_CON_ID,MDI_PROJ_ID) 
+										 and 	b.MDI_PAY_MODE = 'P'
+where 	MPI_DISB_DT is not null 
+and 	MDI_CUST_ID is not null;
+run;
+
+
+*Processing time => real time 5:35, cpu time 1:58;
+proc sort data 	= 	idalpub1.m_m_proj_dq_hist_prd out	=	dump;
+by 					mpdh_cust_id 
+					mpdh_con_id 
+					mpdh_proj_id 
+					mpdh_dq_eff_dt;
+where 				datepart(mpdh_dq_eff_dt) >= "&cutoff_date"d;
+
+proc sql;
+create table dump_history as
+select 	b.AGREEMENTNO
+		,	b.MPI_APP_REF_NO as APP_ID
+		, 	catx("-",mpdh_cust_id,mpdh_con_id,mpdh_proj_id) format $20. as ref_text
+		,	SANCTIONAMT
+		, 	DISBURSEDATE
+		, 	FIRST_EMI_DATE
+		, 	CLOSED_DATE
+		, 	AUTHDATE
+		,	day(datepart(FIRST_EMI_DATE)) as due_day
+		,	mpdh_dq_eff_dt
+		,	put(datepart(mpdh_dq_eff_dt),monyy5.) as month
+		,	mpdh_last_paid_dt as LASTPAYMENTDATE
+		,	mpdh_dpd
+		,	case when mpdh_final_stat in ("TB7" "TB8" "TB9" "TB10" "TB11" "TB12") then "TB6" 
+			when mpdh_final_stat = "REGLR" then "REGULAR" else mpdh_final_stat end as bucket
+		,	mpdh_bal_string
+from 		dump a
+left join 	los_to_lms b on catx("-",mpdh_cust_id,mpdh_con_id,mpdh_proj_id) = b.REF_TEXT
+where 	b.MPI_APP_REF_NO is not null 
+and 	datepart(mpdh_dq_eff_dt) > datepart(DISBURSEDATE)
+;
+run;
+
+proc sql; drop table dump; run;
+
+data  dump_history; 
+keep 	STARTDATE	AGREEMENTNO	LOANSTATUS CLOSED_DATE	DPD	BUCKET	PRINBALANCE	ARREARINT	ARREARPRIN	due_day;
+retain 	STARTDATE	AGREEMENTNO	LOANSTATUS CLOSED_DATE	DPD	BUCKET	PRINBALANCE	ARREARINT	ARREARPRIN	due_day;
+set dump_history;
+/*set x;*/
+t 	= findc(mpdh_bal_string,'~');
+t2 	= findc(mpdh_bal_string,'~',t+1);
+t3 	= findc(mpdh_bal_string,'~',t2+1);
+format 	PRINBALANCE ARREARPRIN ARREARINT 15.2
+		STARTDATE datetime20.
+		LOANSTATUS $8.
+		;
+DPD = input(put(mpdh_dpd, 4.), $4.);
+ARREARPRIN 		= substr(mpdh_bal_string,1,t-1);
+ARREARINT 		= substr(mpdh_bal_string,t+1,t2-1-t);
+PRINBALANCE 	= substr(mpdh_bal_string,t2+1,t3-1-t2);
+STARTDATE 		= dhms(datepart(mpdh_dq_eff_dt),00,00,00);
+
+if CLOSED_DATE ^= . and datepart(STARTDATE) > datepart(CLOSED_DATE) then LOANSTATUS = 'Matured'; else LOANSTATUS = 'Active';
+if LOANSTATUS 	= 'Matured' then do; BUCKET = 'NA'; end;
+
+/*STARTDATE = dhms(datepart(mpdh_dq_eff_dt) + 1,00,00,00);*/
+
+/** fix for STARTDATE after disburse have no PRINBALANCE;*/
+/*if substr(mpdh_bal_string,t2+1,t3-1-t2) = '0' and datepart(mpdh_dq_eff_dt) < datepart(FIRST_EMI_DATE) and CLOSED_DATE = .*/
+/*then PRINBALANCE = first_prin;*/
+
+/*output lea_extract;*/
+
+*date = day(datepart(startdate));
+/*drop t t2 t3 mpdh_bal_string final_dpd date date first_prin;*/
+run;
+/*proc sort data=dump_history;by agreementno startdate;*/
+
+
+* DUMP FULL Generated & DUMP LEA for Scoring;
+data cfcpub.cr_dump_linh_2020; set dump_history; run;
+proc sql; drop table dump_history; run;
+/*proc sort data=dump_history out=cfcpub.cr_dump_linh_2020;by agreementno startdate;*/
+
+
+
+/*add matured cases*/
+data closed_list;
+keep 	STARTDATE	AGREEMENTNO	LOANSTATUS	CLOSED_DATE DPD	BUCKET	PRINBALANCE	ARREARINT	ARREARPRIN	due_day;
+retain 	STARTDATE	AGREEMENTNO	LOANSTATUS	CLOSED_DATE DPD	BUCKET	PRINBALANCE	ARREARINT	ARREARPRIN	due_day;
+set los_to_lms;
+format 	LASTPAYMENTDATE datetime20. ;
+
+LOANSTATUS = 'Matured';
+LASTPAYMENTDATE = .;
+DPD = '0';
+BUCKET = 'NA';
+PRINBALANCE = 0;
+ARREARINT = 0;
+ARREARPRIN = 0;
+due_day = day(datepart(FIRST_EMI_DATE));
+where CLOSED_DATE is not null;
+/*where datepart(CLOSED_DATE) >= "&cutoff_date"d;*/
+run;
+
+
+data generate_matured;
+set closed_list;
+if datepart(CLOSED_DATE) >= "&cutoff_date"d then first_date = datepart(CLOSED_DATE)+1;
+/*else first_date="&cutoff_date"d + 1;*/
+else first_date="&cutoff_date"d;
+last_date = "&sysdate"d;
+
+/*format i datetime20.;*/
+format i date9. STARTDATE datetime20.;
+do i= first_date to last_date;    
+	month = put(i,monyy5.);
+	temp = mdy(month(i),day(i),year(i));
+	STARTDATE=dhms(temp,0,0,00);
+/*	STARTDATE=dhms(temp + 1,0,0,00);*/
+	date = day(i);
+	output;	
+end;
+/*rename i = startdate;*/
+/*drop i temp date first_date last_date ref_text month; */
+run;
+/*proc sort data=generate_matured;by agreementno startdate;*/
+
+proc append base	=	cfcpub.cr_dump_linh_2020 data=generate_matured force;
+
+proc datasets lib = work kill;run;
+
+proc sort 	data	=	cfcpub.cr_dump_linh_2020 nodupkey;by agreementno startdate;
+
+proc sql;
+create table cfcpub.cr_dump_linh_2020 as
+select 		a.*
+		,	dhms((b.disbursed_date),00,00,00) format datetime20. as DISBURSEDATE
+		,	b.loan_amt as SANCTIONAMT
+		, 	dhms((b.first_emi_date),00,00,00) format datetime20. as FIRSTEMIDATE
+		,	b.authorized_date as AUTHDATE
+		,	(datepart(a.STARTDATE) - 1) format date7. as real_date
+
+from cfcpub.cr_dump_linh_2020 a
+left join cfcstudy.cr_application_1 b on a.AGREEMENTNO = b.AGREEMENTNO;
+run;
+
+proc contents data=cfcpub.cr_dump_linh_2020;
+proc contents data=cfcstudy.cr_application_1;
+/*proc sql; */
+/*delete from cfcpub.cr_dump_linh_2020 */
+/*where datepart(startdate) > "&cutoff_date"d and LOANSTATUS = 'Matured' and BUCKET ^= 'NA';*/
+/*run;*/
+
+/*proc freq data=cfcpub.cr_dump_linh_2020; table startdate;*/
+/*proc contents data=cfcstudy.LMS_LOAN_PRD;*/
+
+proc datasets lib = work kill;run;
+
+-- 2. Check dump
+
+/*proc contents data=idalpub1.M_M_PROJ_DQ_HIST_PRD;*/
+/**/
+/*proc sql;*/
+/*create table cfcpub.rcl_3 as*/
+/*select 	mpdh_dq_eff_dt , count(*) as rows */
+/*from idalpub1.M_M_PROJ_DQ_HIST_PRD*/
+/*group by 1*/
+/*order by 1 desc;*/
+/*run;*/
+/*proc sql; drop table cfcpub.rcl_3; run;*/
+
+/*proc sql;*/
+/*create table cfcpub.rcl_dump_2019 as*/
+/*select 	startdate , count(*) as rows */
+/*from cfcpub.cr_dump_linh_2019*/
+/*group by 1*/
+/*order by 1 desc;*/
+/*run;*/
+
+proc sql;
+create table cfcpub.rcl_dump_2020 as
+select 	startdate , count(*) as rows 
+from cfcpub.cr_dump_linh_2020
+/*where year(datepart(startdate)) >= 2018*/
+group by 1
+order by 1 desc;
+run;
+
+proc contents data=cfcpub.rcl_dump_2019; 
+proc contents data=cfcpub.rcl_dump_2020; 
+/*proc contents data=cfcpub.rcl_3; */
+
+proc datasets lib = work kill;run;
