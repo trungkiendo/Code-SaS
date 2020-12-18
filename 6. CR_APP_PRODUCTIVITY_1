@@ -1,0 +1,273 @@
+
+proc sql;
+create table app as
+select e.appl_ref_num,
+	   a.userid,a.WORKITEMID,a.USERACTION, a.INITIALQUEUEID,a.NEWQUEUEID,
+	   a.USERDATE,a.INITIALDATE,
+	   a.INITIALQUEUEID as cur_id,
+	   a.NEWQUEUEID 	as next_id,
+	   case when b.queuelabel = '' and c.queuelabel = 'Essential Data Entry' then 'Sales Queue'
+	        else b.queuelabel end as cur_stage,
+		c.queuelabel as next_stage,
+
+	   a.INITIALDATE as Start_Time,
+	   a.userdate as End_Time, 
+	   a.USERID
+from IDALPUB1.O_OW_AUDIT_TABLE_PRD a
+left join IDALPUB1.O_OCR_CREDIT_WORKFLOW_MAP_PRD e on a.workitemid = e.work_item_id
+left join IDALPUB1.o_ow_queue_prd b on a.initialqueueid = b.queueid
+left join IDALPUB1.o_ow_queue_prd c on a.NEWQUEUEID = c.queueid
+where  USERACTION in ('ROUTE' 'ROUTE REQ')
+order by workitemid,  userdate
+;run;
+
+* appl_ref_num ='1902110001258995' 1903070001274119;
+
+proc sql;
+create table dup_cases as
+select a.*,
+count(*) as cnt
+from app a
+group by userid,INITIALQUEUEID,INITIALDATE,USERDATE
+order by workitemid, userdate, cnt;
+/*delete dupcases stage FV/ Fraud*/
+delete from dup_cases where  NEWQUEUEID = 1308 or INITIALQUEUEID = 1308 or ( NEWQUEUEID=1301 and cnt=2) or upcase(userid) like "%FRAU%"
+;run;
+
+/*Seq*/
+data app_1;
+set dup_cases;
+by workitemid userdate cnt;
+format seq_1 5.;
+seq_1+1;
+if first.workitemid then seq_1 = 1;
+run;
+
+proc sort data=app_1; by workitemid descending seq_1 ;
+
+data get_next;
+set app_1;
+by workitemid descending seq_1;
+format next_user $20. next_user_1 $20.;
+
+next_user = lag(USERID);
+if first.workitemid then next_user= "";
+
+next_user_1 = lag(next_user);
+if first.workitemid then next_user_1 = "";
+
+next_id= lag(cur_id);
+if first.workitemid then next_id = "";
+
+run;
+
+proc sort data=get_next; by workitemid seq_1 ;
+
+
+/*
+TH: CV - ROUTE REQ duplicate (only process cases CV 
+
+Flag:nếu cur_id tu cac stage thuoc CIU va next_user <> next_user_1 --> xuất hiện stage CV
+pre_flag: Xác định stage CV bị thiếu. 
+pre_flag_1: Xac dinh stage kế tiếp của pre_flag
+
+*/
+
+data get_CV;
+set get_next;
+ 
+if INITIALQUEUEID in (1296 1297 1298 1314) and (NEWQUEUEID= 1300) and cnt=2 then flag=1;
+
+
+pre_user=lag(userid);
+if first.workitemid then pre_user= "";
+
+
+pre_flag = lag(flag);
+if first.workitemid then pre_flag= "";
+
+
+
+pre_flag_1 = lag(pre_flag);
+
+if pre_flag_1=1 and (userid=pre_user) then pre_flag=pre_flag_1;
+else pre_flag=pre_flag;
+
+if flag=.  then flag=pre_flag;
+
+drop pre_flag_1;
+
+run;
+
+/*get last_id of duplicate*/
+proc sql; delete from get_CV where pre_flag=1 and (userid =next_user);
+
+
+data get_CV_1;
+set get_CV;
+
+pre_flag_1 = lag(pre_flag);
+if first.workitemid then pre_flag_1= "";
+
+
+pre_flag_2 = lag(pre_flag_1);
+if first.workitemid then pre_flag_2= "";
+
+*flag cases same stage after case have pre_flag = 1;
+if pre_flag_1 = . then pre_flag_1=pre_flag_2;
+else pre_flag_1= pre_flag_1;
+drop pre_flag_2
+;run;
+
+
+/*Add CV team */
+data get_app;
+set get_CV_1; 
+if pre_flag=1 and flag=1 and USERACTION='ROUTE REQ' then do;
+	INITIALQUEUEID=1300;
+	cur_id=1300;
+	cur_stage='CV Queue';
+	USERACTION='ROUTE';
+end;
+
+;run;
+/*data get_fraud;*/
+/*set app;*/
+/*keep APPL_REF_NUM	USERID	WORKITEMID	USERACTION	INITIALQUEUEID	NEWQUEUEID	USERDATE	INITIALDATE	cur_id	next_id	cur_stage	Start_Time	End_Time;*/
+/**/
+/*where INITIALQUEUEID = 1308 and USERACTION='ROUTE';*/
+/*run;*/
+
+data get_app;
+set get_app;
+where USERACTION='ROUTE';
+by workitemid seq_1;
+run;
+/*data get_combine;*/
+/*set get_fraud  get_app;*/
+/*by workitemid End_Time;*/
+/*run;*/
+
+/**/
+/*Seq*/
+data get_app_1;
+set get_app;
+by workitemid End_Time;
+format seq 5.;
+seq+1;
+if first.workitemid then seq = 1;
+drop seq_1 next_user next_user_1 
+;run;
+
+proc sort data=get_app_1; by workitemid descending seq;
+data get_next_stage;
+set get_app_1;
+by workitemid descending seq;
+format next_id 10. next_time datetime20.;
+
+NEWQUEUEID_1=lag(INITIALQUEUEID) ;
+
+
+if NEWQUEUEID=. then NEWQUEUEID= NEWQUEUEID_1;
+else NEWQUEUEID=NEWQUEUEID;
+
+next_id=NEWQUEUEID;
+
+
+next_time = lag(End_time);
+if first.workitemid then next_time ='';
+
+run;
+
+proc sort data=get_next_stage ; by workitemid  seq;
+
+/*Fix Start_time of CV/FV  */
+data get_pre_stage;
+set get_next_stage;
+
+by  workitemid  seq;
+format pre_id 10. pre_time datetime20.;
+
+pre_id= lag(cur_id);
+if first.workitemid then pre_id ='';
+
+pre_time = lag(End_time);
+if first.workitemid then pre_time ='';
+
+if Start_time =.      								  then Start_time=pre_time;
+else if pre_flag_1= 1 and cur_stage ^='Sales Queue' then Start_time=pre_time;
+else Start_time=Start_time;
+
+run;
+
+proc sql;
+create table get_pre_stage_1 as
+select 
+	a.APPL_REF_NUM as app_id,
+	a.workitemid,
+	a.pre_id,
+	a.cur_id,
+	a.next_id,
+	case when c.queuelabel = '' and  a.cur_stage= 'Essential Data Entry' then 'Sales Queue'
+	 		else c.queuelabel end as pre_stage,
+	a.cur_stage,
+	b.queuelabel as next_stage,
+	a.userid,
+	a.Start_Time,
+	a.End_Time,
+	a.seq
+
+from get_pre_stage a
+left join idalpub1.O_OW_QUEUE_PRD b on a.next_id = b.queueid
+left join idalpub1.O_OW_QUEUE_PRD c on a.pre_id = c.queueid
+order by workitemid, seq
+;run;
+
+
+proc sql;
+update get_pre_stage_1 set seq=99 where app_id='1908280001448352' and next_stage='Approved Queue';
+update get_pre_stage_1 set seq=99 where app_id='1908300001451331' and next_stage='Approved Queue';
+update get_pre_stage_1 set seq=99 where app_id='1909030001452984' and next_stage='Approved Queue'
+
+;run;
+
+proc sort data=get_pre_stage_1; by workitemid seq;
+
+/*get insert row for next stage of last.app*/
+
+data last_app;
+set get_pre_stage_1;
+by workitemid seq;
+if  last.workitemid;
+run;
+
+data last_app_1;
+set last_app;
+by workitemid seq;
+if next_stage ^='' ;
+run;
+
+data app_last;
+set last_app_1;
+if next_stage ^='' then do;
+	seq=seq+1;
+	pre_stage=cur_stage;
+	cur_stage=next_stage;
+	next_stage='';
+	userid='';
+	pre_id=cur_id;
+	cur_id=next_id;
+	next_id='';
+	Start_Time=End_Time;
+	End_Time=End_Time;
+end;
+run;
+
+data combine;
+set get_pre_stage_1 app_last;
+run;
+
+proc sort data=combine out=cfcstudy.cr_app_productivity_1;by workitemid seq;run;
+
+proc freq data=cfcstudy.cr_app_productivity_1; table cur_stage;
+proc contents data=cfcstudy.cr_app_productivity_1;
