@@ -1,0 +1,135 @@
+-- 1. CR_CIF_LOAN
+
+proc contents data=idalpub1.O_TRN_OCR_DE_PER_PRD; run;
+/*proc contents data=idalpub1.O_TRN_OCR_PDOC_DTLS_PRD; run;*/
+
+data CIF_LOAN;
+set idalpub1.O_TRN_OCR_DE_PER_PRD;
+format applied_date date9.;
+keep CIF_ID ICIF_NUMBER APPL_REF_NUM APP_ID applied_date flag_core;
+
+APP_ID = compress(put(input(compress(substr(APPL_REF_NUM,10,7)),8.),8.));
+char = 	compress(put(input(compress(substr(APPL_REF_NUM,1,6)),6.),6.));
+
+applied_date  = input(char,yymmdd6.);
+if applied_date >= '01feb2019'd then flag_core = 'new'; else flag_core = 'old';
+run;
+
+proc sql;
+create table CIF_LOAN_MAIN as
+select A.*
+from CIF_LOAN A
+WHERE A.ICIF_NUMBER IN (
+SELECT B.ICIF_NUMBER FROM IDALPUB1.O_TRN_OCR_APPL_ICIF_NUM_LINK_PRD B WHERE B.APPLICANT_TYPE = '001')
+;
+run;
+
+/*proc sql;*/
+/*create table check_dup as */
+/*select * from CIF_LOAN*/
+/*group by APPL_REF_NUM*/
+/*having count(APPL_REF_NUM) > 1;*/
+/*run;*/
+
+/*proc sql;*/
+/*create table CIF_LOAN as*/
+/*select distinct*/
+/*        CIF_ID,*/
+/*		ICIF_NUMBER,*/
+/*        APPL_REF_NUM,*/
+/*        compress(put(input(compress(substr(APPL_REF_NUM,10,7)),8.),8.)) as APP_ID,*/
+/*		case when */
+/*		case when PLACE_OF_ISSUE_ID = 'DATA MIGRATION' then 'old' else 'new' end as flag_core*/
+/**/
+/*from idalpub1.O_TRN_OCR_DE_PER_PRD;*/
+/*run;*/
+
+
+proc sql;
+create table cfcstudy.CR_CIF_LOAN as
+select a.*,
+        b.loan_agreement_number as agreementno
+from CIF_LOAN_MAIN a
+left join idalpub1.O_TRN_OCR_PDOC_DTLS_PRD b on a.APPL_REF_NUM = b.APPL_REF_NUM;
+run;
+
+proc contents data=cfcstudy.CR_CIF_LOAN;
+
+proc datasets lib = work kill;run;
+
+
+-- 2. cr_app_campaign
+
+/*proc contents data=idalpub1.O_TRN_OCR_REGISTRATION_DTL_PRD; run;*/
+/*proc contents data=idalpub1.O_OCR_GENERAL_PARAM_MB_PRD; run;*/
+
+proc sql;
+create table GENERAL_PARAM as
+select distinct key1, value1, value2
+from  IDALPUB1.O_OCR_GENERAL_PARAM_MB_PRD
+where KEY1 like '%CAMPAIGN_PRODUCTCODE%'
+order by 1,2,3;
+run;
+
+
+data 	campaign_code;
+set 	idalpub1.O_TRN_OCR_REGISTRATION_DTL_PRD;
+format 	APPL_REF_NUM 
+		INPUTTER_ID
+		COMPAIGN_CODE 
+		COMPAIGN_CODE2 
+		COMPAIGN_CODE3 
+		COMPAIGN_CODE4 $30.;
+keep 	APPL_REF_NUM 
+		INPUTTER_ID
+		COMPAIGN_CODE 
+		COMPAIGN_CODE2 
+		COMPAIGN_CODE3 
+		COMPAIGN_CODE4;
+if 		INPUTTER_ID ^= 'MIGMKR' and KEY1='REGISTRATION';
+run;
+proc sql;
+create table campaign_code1 as
+select 	a.APPL_REF_NUM as app_id, 
+		INPUTTER_ID as input_user,
+		b.value2 format $30. as compaign_1,
+		c.value2 format $30. as compaign_2,
+		d.value2 format $30. as compaign_3,
+		e.value2 format $30. as compaign_4
+from campaign_code a
+left join GENERAL_PARAM b on a.COMPAIGN_CODE  = b.value1 and b.key1 = 'CAMPAIGN_PRODUCTCODE'
+left join GENERAL_PARAM c on a.COMPAIGN_CODE2 = c.value1 and c.key1 = 'CAMPAIGN_PRODUCTCODE1'
+left join GENERAL_PARAM d on a.COMPAIGN_CODE3 = d.value1 and d.key1 = 'CAMPAIGN_PRODUCTCODE2'
+left join GENERAL_PARAM e on a.COMPAIGN_CODE4 = e.value1 and e.key1 = 'CAMPAIGN_PRODUCTCODE3'
+order by 1,2,3,4,5,6
+;run;
+
+/*proc freq  data=cfcstudy.cr_app_compaign;*/
+/**/
+/*table compaign_1	compaign_2	compaign_3	compaign_4/ crosslist nocol nocum norow nopercent;*/
+/*run;*/
+/*proc contents data=campaign_code1;*/
+
+data cfcstudy.cr_app_compaign;
+set campaign_code1;
+length 		input_user  $30.
+			compaign_1  $30.
+			compaign_2  $30.
+			compaign_3  $30.
+			compaign_4	$30.
+			;
+informat 	input_user  $30.
+			compaign_1  $30.
+			compaign_2  $30.
+			compaign_3  $30.
+			compaign_4	$30.
+			;
+run;
+proc contents data=cfcstudy.cr_app_compaign;
+
+proc freq  data=cfcstudy.cr_app_compaign;
+table compaign_1 compaign_2 compaign_3	compaign_4;
+run;
+
+proc datasets lib=work kill;
+
