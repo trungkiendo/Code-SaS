@@ -1,0 +1,54 @@
+/*proc contents data= cfcdm01.LMS_TELBANK_MIS_UAT;*/
+proc sql; drop table cfcstudy.SF4_MonthlyPos ; run;
+proc sql; select reportdate into:reportdate from cfcpub01.an_reportdate; run;
+
+proc sql;
+create table cfcstudy.SF4_MonthlyPos as
+select 
+/*sa.AFN*/
+sa.DEALER
+/*,MPI_CUST_ID */
+/*AS MAKH*/
+,te.FULL_NAME 
+/*AS TENKH*/
+,CORE_LOAN_ID
+/*AS SOHD*/
+,SALES_PRODUCT_CODE 
+/*AS MASP*/
+,(LOAN_AMOUNT - CREDITSHIELD_AMT) AS STIEN_VAY
+,LOAN_AMOUNT
+/*AS STIEN_GNBB*/
+,sa.SUBVENTION_AMOUNT 
+/*AS TIENHTLS*/
+,SUB_VAT 
+/*as THEGTGT*/
+,DATEPART(MDI_DISB_DT) AS  MDI_DISB_DT FORMAT DATE9. 
+/*AS NGAYGIANGAN*/
+,sa.SUBVENTION_CODE 
+/*AS LOAIHOTRO*/
+,CAMPAIGN_CODE 
+/*AS CTHOTRO*/
+,NARRATION 
+/*AS NOTE*/
+from cfcdm01.SAFIN_SALEFINANCE_MIS_01_UAT sa
+left join cfcdm01.LMS_TELBANK_MIS_UAT te on te.MPI_APP_REF_NO = sa.ARN
+left join cfcdm01.FINN_DISBURSAL_MIS_UAT ds on sa.CORE_LOAN_ID = ds.AGREEMENT_NO
+where LOAN_STATUS = 'A'
+and sa.SUBVENTION_CODE IN ('POSTPAID')
+/*and sa.AFN in */
+/*('80001819',*/
+/*'80001822',*/
+/*'80001826',*/
+/*'80001828',*/
+/*'80001827',*/
+/*'80001829',*/
+/*'80001830',*/
+/*'80001831',*/
+/*'80001833',*/
+/*'80001834',*/
+/*'80001832',*/
+/*)*/
+;
+run;
+
+proc contents data= cfcstudy.SF4_MonthlyPos;
