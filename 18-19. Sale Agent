@@ -1,0 +1,731 @@
+-- 1. Sales Agent
+
+/*== start code for getting agents infor===*/
+data CHANNEL CHANNEL_MANAGER JOB_TYPE PRODUCT REASON_OF_QUIT STATUS VENDOR;
+set 	etlpub01.lmgt_web_group;
+if 		group_name = "CHANNEL" 			then output channel;
+else if group_name = "CHANNEL_MANAGER"	then output channel_manager;
+else if group_name = "JOB_TYPE" 		then output job_type;
+else if group_name = "PRODUCT" 			then output product;
+else if group_name = "REASON_OF_QUIT" 	then output reason_of_quit;
+else if group_name = "STATUS" 			then output status;
+else if group_name = "VENDOR" 			then output vendor;
+run;
+
+proc contents data=etlpub01.agent;
+
+proc sql;
+create table ais_agentss as
+select 	a.AGENT_CODE,
+		a.AGENT_ID,
+		a.AGENT_NAME,
+		a.CHANNEL,
+		a.CHANNEL_MANAGER,
+		a.INSPECTOR_ID,
+		e.group_item 				as product,
+		a.REASON_OF_QUIT,
+		a.STATUS,
+		a.system_team_name,
+		c.group_item				as 	statusofagent,
+		g.group_item				as	channelmanager_name,
+		h.group_item				as 	channelname,	
+		f.group_item				as 	jobtype,
+		d.group_item				as 	quit_reason,	
+		datepart(a.LAST_WORKING_DAY) 		as LAST_WORKING_DAY 		format date9.,
+		datepart(a.DATE_OF_CODE_CREATION) 	as DATE_OF_CODE_CREATION 	format date9.,
+		datepart(a.DATE_OF_JOINING) 		as DATE_OF_JOINING 			format date9.,
+		datepart(a.DATE_OF_QUIT)			as DATE_OF_QUIT 			format date9.	
+from 	  etlpub01.AGENT a
+left join vendor 			b	on input(a.vendor,8.) 			= 	b.group_id
+left join status 			c 	on input(a.status,8.) 			= 	c.group_id
+left join reason_of_quit 	d	on input(a.reason_of_quit,8.)	= 	d.group_id
+left join product 			e	on input(a.product,8.)			= 	e.group_id	 
+left join job_type 			f	on input(a.job_type,8.)			= 	f.group_id
+left join channel_manager 	g 	on input(a.channel_manager,8.)	= 	g.group_id
+left join channel 			h	on input(a.channel,8.)			= 	h.group_id
+;
+quit;
+
+proc sql;
+	create table temp4 as
+	select distinct brokerid, broker
+	from cfcpub.cfc_longnd_product_broker_master
+	where broker <> '-'
+	order by brokerid;
+
+	create table temp5 as
+	select a.brokerid, a.brokername, b.broker
+	from etlpub01.cas_broker a 
+	left join temp4 b on a.brokerid = b.brokerid;
+quit;
+
+proc sql;
+create table test as
+select 	a.*
+		, b.brokername
+		, b.broker 
+
+from 		ais_agentss a 
+left join 	temp5 b on input(a.system_team_name, comma10.) = b.brokerid
+where	 	a.INSPECTOR_ID ^= '';
+quit;
+
+proc sort data = test;
+by inspector_id agent_id;
+run;
+
+data agent2a;
+set test;
+by inspector_id agent_id;
+if last.inspector_id;
+run;
+
+data cfcpub.agent_v;
+length 
+AGENT_CODE 			$10.
+AGENT_ID 			8.
+AGENT_NAME 			$50.
+BROKER 				$20.
+BROKERNAME 			$50.
+CHANNEL 			$50.
+CHANNEL_MANAGER 	$50.
+INSPECTOR_ID		$10.
+PRODUCT				$50.
+REASON_OF_QUIT		$10.
+STATUS				$20.
+channelmanager_name $50.
+channelname			$50.
+jobtype				$50.
+quit_reason			$50.
+statusofagent		$20.
+;
+set 	agent2a;
+FORMAT
+AGENT_CODE 			$10.
+AGENT_NAME 			$50.
+BROKER 				$20.
+BROKERNAME 			$50.
+CHANNEL 			$50.
+CHANNEL_MANAGER 	$50.
+INSPECTOR_ID		$10.
+PRODUCT				$50.
+REASON_OF_QUIT		$10.
+STATUS				$20.
+channelmanager_name $50.
+channelname			$50.
+jobtype				$50.
+quit_reason			$50.
+statusofagent		$20.
+;
+keep 
+AGENT_CODE	
+AGENT_ID
+AGENT_NAME				
+BROKER					
+BROKERNAME				
+CHANNEL					
+CHANNEL_MANAGER			
+DATE_OF_CODE_CREATION
+DATE_OF_JOINING
+DATE_OF_QUIT
+INSPECTOR_ID			
+LAST_WORKING_DAY		
+PRODUCT					
+REASON_OF_QUIT 			
+STATUS					
+channelmanager_name		
+channelname				
+jobtype					
+quit_reason				
+statusofagent			
+;
+
+run;
+
+
+proc sql;
+update 	cfcpub.agent_v
+set 	date_of_joining = DATE_OF_CODE_CREATION
+where 	date_of_joining	> DATE_OF_CODE_CREATION 
+  and 	DATE_OF_CODE_CREATION ^= .;
+run;
+
+proc contents
+data	=	cfcpub.agent_v
+memtype	=	data
+out		=	out noprint;
+run;
+
+DATA CFCPUB.AGENT_V;
+SET 	CFCPUB.AGENT_V;
+label AGENT_CODE				= 'AGENTCODE';
+label AGENT_ID					= 'AGENTID';
+label AGENT_NAME				= 'AGENTNAME';
+label BROKER					= 'SALESBROKER';
+label BROKERNAME				= 'SALESBROKERNAME';
+label CHANNEL					= 'SALESCHANNEL';
+label CHANNEL_MANAGER			= 'CHANNELMANAGER';
+label DATE_OF_CODE_CREATION		= 'DATEOFCODECREATION';
+label DATE_OF_JOINING			= 'DATEOFJOINING';
+label DATE_OF_QUIT				= 'DATEOFQUIT';
+label INSPECTOR_ID				= 'INSPECTORID';
+label JOB_TYPE					= 'JOBTYPE';
+label LAST_WORKING_DAY			= 'LASTWORKINGDAY';
+label PRODUCT					= 'CASPRODUCT';
+label REASON_OF_QUIT			= 'REASONOFQUIT';
+label STATUS					= 'AGENTSTATUS';
+label channelmanager_name		= 'channelmanagername';
+label channelname				= 'channelname';
+label jobtype					= 'jobtype';
+label product					= 'productname';
+label quit_reason				= 'quitreason';
+label statusofagent				= 'statusofagent';
+label vendorname				= 'vendorname';
+RUN;
+
+
+%macro LastEditDate(dataset) ;
+  %let dsid=%sysfunc(open(&dataset)) ;
+  %sysfunc(attrn(&dsid,MODTE))
+  %let dsid=%sysfunc(close(&dsid)) ;
+%mend LastEditDate;
+
+%macro LagXday(numberofday);
+%sysfunc(
+				intnx(day,%sysfunc(today()),-&numberofday,SAME)
+		)
+%mend LagXday;
+%let startedTime = 	%sysfunc(datetime());
+%let dataset1= 		cfcpub.agent_v;
+%let lastupdateDate1 = %LastEditDate(&dataset1);
+
+%Macro Collectiondump;
+/*data source is not update*/
+%if	%sysfunc(Datepart(&lastupdateDate1)) ^= %sysfunc(today())
+%THEN %DO;
+text	=	'Not updated';
+%END;
+%ELSE 
+%DO;
+%let mon = %sysfunc(putn(%LagXday(1),monyy5));
+
+proc sql;
+create 	table tes2 as
+select  distinct *
+from 	cfcpub.agent_v
+where 	(agent_id is not null and	inspector_id is not null) 
+order by inspector_id 
+		 , agent_id
+;
+run;
+
+data 	tes3;
+set 	tes2;
+by 		inspector_id agent_id;
+if 		last.inspector_id;
+run;
+
+proc sql;
+create table his as
+select  month
+		, agent_id
+		, inspector_id
+		, statusofagent
+		, jobtype
+		, brokername
+		, product as productname
+		, AGENT_NAME
+	
+from 	cfcpub01.agent_2
+where 	inspector_id is not null
+and input(month,monyy5.) > intnx('month',today(),-26)
+order by month
+		, inspector_id
+		, agent_id
+		, statusofagent;
+run;
+
+data lasthis;
+set 	his;
+by 		month  inspector_id agent_id  statusofagent;
+if 		last.inspector_id;
+run;
+
+proc freq data = lasthis;
+table month;
+run;
+
+proc sql;
+create table his1 as
+select  "&mon" as month
+		, agent_id
+		, inspector_id
+		, statusofagent
+		, date_of_joining
+		, jobtype
+		, brokername
+		, product as productname
+		, AGENT_NAME
+		
+from 	tes2
+where 	inspector_id is not null
+order by inspector_id
+		, date_of_joining
+		, statusofagent;
+run; 
+
+data 	lasthis1;
+set 	his1;
+by  	inspector_id date_of_joining statusofagent ;
+if 		last.inspector_id;
+drop 	date_of_joining;
+run;
+
+data 	his2;
+set 	lasthis lasthis1;
+run; 
+
+proc sql;
+create table his3 as
+select 	a.*
+		, 	b.agent_code
+		, 	date_of_joining
+		, 	DATE_OF_CODE_CREATION
+		, 	date_of_quit
+		, 	quit_reason
+		, 	channelname
+		, 	channelmanager_name
+from 		his2 a 
+left join  	tes3 b on a.inspector_id	=	b.inspector_id
+;
+run;
+
+
+proc sql;
+create table agent as
+select distinct *
+		,	input(month,monyy5.) format monyy5. as month_rpt
+from 	his3
+where 	inspector_id 	is not null 
+or 	  	inspector_id 	^= '.'
+order by 	inspector_id
+			, 	input(month,monyy5.);
+run;
+/**/
+/*data agent;*/
+/*set his3;*/
+/*if inspector_id 	^= .;*/
+/*format 		month_rpt  monyy5.;*/
+/*month_rpt	= input(month,monyy5.) ;*/
+/*run;*/
+
+proc sort data	=	agent;
+by inspector_id month_rpt agent_id;
+run;
+
+data 	sort_agent;
+set 	agent;
+by 		inspector_id month_rpt agent_id ;
+format 	laststatusofagent $25.;
+laststatusofagent	=	lag(statusofagent);
+if first.inspector_id then laststatusofagent='';
+run;
+
+proc sort data	=	sort_agent;
+by  inspector_id month_rpt agent_id;
+run;
+
+data agent_a ;
+set sort_agent;
+if 	statusofagent='Active' and laststatusofagent='Active' then do;
+	active		=	1;
+	newactive	=	0;
+	newdeactive	=	0;
+end;
+
+else if statusofagent='Active' and laststatusofagent  not in ('Active') then do;
+	active		=	1;
+	newactive	=	1;
+	newdeactive	=	0;
+end;
+
+else if statusofagent='Deactive' and laststatusofagent  in ('Active') then do;
+	active		=	0;
+	newactive	=	0;
+	newdeactive	=	1;
+end;
+
+else if statusofagent='Deactive' and laststatusofagent  in ('') then do;
+	active		=	0;
+	newactive	=	1;
+	newdeactive	=	1;
+end;
+
+else if statusofagent='Deactive' and laststatusofagent  in ('Deactive') then do;
+	active		=	0;
+	newactive	=	0;
+	newdeactive	=	0;
+end;
+
+run;
+proc freq data=agent_a;table productname ;run;
+/*get agent & channel*/
+proc sql;
+create table agent_b as
+select 	a.*
+		,	b.source as f_channel
+		,	b.subsource
+		,	b.product as f_product
+from agent_a a 
+left join (
+				select distinct
+						dealer
+						,	source
+						,	subsource
+						,	product 
+				from cfcpub.cas_broker_source 
+				where 	product like'1.%' 
+				or 		product like'5.%'
+		  )b on (a.brokername)= (b.dealer)
+;
+run;
+
+proc sql;
+update agent_b
+set f_channel	=	'SF'
+where productname in ('SF-PL ','Sale Finance ')
+;
+
+update agent_b
+set 	f_channel	=	'TELE SALES-INSURANCE'
+where 	f_product like '5.%'
+;
+
+update agent_b
+set 	f_channel	=	'Unidentified'
+where 	f_channel in 	('','Unidentified')
+;
+
+run;
+proc freq data	=	agent_b;
+table productname*f_channel;
+run;
+
+data 	quit_agent;
+set 	agent_b;
+format datecode date9.;
+if 		DATE_OF_CODE_CREATION 	^= . 
+then 	datecode 				= DATE_OF_CODE_CREATION; 
+else 	datecode 				= date_of_joining;
+
+/*if statusofagent='Deactive' then vintage=intck('month',(DATECODE),month_rpt);*/
+
+vintage	=	intck('month',(DATECODE),month_rpt);
+if day(datecode) <	16 then do;
+if vintage	=	. then 		vingroup	=	"Blank";
+else if vintage	<	1 then 	vingroup	=	"0-1";
+else if vintage	=	1 then 	vingroup	=	"1-2";
+else if vintage	=	2 then 	vingroup	=	"2-3";
+else if vintage	=	3 then 	vingroup	=	"3-4";
+else if vintage	=	4 then 	vingroup	=	"4-5";
+else if vintage	=	5 then 	vingroup	=	"5-6";
+else if 6		<=	vintage	<	12 then vingroup="6-12";
+else if vintage	>=	12 
+then vingroup	=	">=12";
+end;
+
+if day(datecode) >=	16 then do;
+if vintage		=	. then vingroup="Blank";
+else if vintage	<	1 then vingroup="0-1";
+else if vintage	=	1 then vingroup="1-1";
+else if vintage	=	2 then vingroup="1-2";
+else if vintage	=	3 then vingroup="2-3";
+else if vintage	=	4 then vingroup="3-4";
+else if vintage	=	5 then vingroup="4-5";
+else if vintage	=	6 then vingroup="5-6";
+else if 7		<=	vintage	<	12 then vingroup	=	"6-12";
+else if vintage	>=	12 then vingroup	=	">=12";
+end;
+
+if quit_reason in ('Quit','') then quit_reason='No reason';
+run;
+
+proc sql;
+create table agent_final as
+select 	*
+		, input(put((DATECODE),monyy5.),monyy5.) as month_joining format monyy5.
+		, input(put(date_of_quit,monyy5.),monyy5.) as month_quit format monyy5.
+from quit_agent;
+run;
+
+data cfcpub.agent_a;
+set agent_final;
+run;
+
+proc freq data=cfcpub.agent_a;
+table productname*f_channel f_channel*subsource;
+run;
+
+proc sql;
+update cfcpub.agent_a
+set 	f_channel='FS-HN'
+Where 	f_channel='FIELD SALES'  and subsource='Hanoi FS';
+
+update cfcpub.agent_a
+set 	f_channel='FS-HCM'
+Where 	f_channel='FIELD SALES'  and subsource not in ('3P-CC','Hanoi FS');
+
+update cfcpub.agent_a
+set 	f_channel='3P-CC'
+Where 	f_channel='FIELD SALES'  and subsource ='3P-CC';
+
+update cfcpub.agent_a
+set 	f_channel='BS-HCM'
+Where 	f_channel='BRANCH'  and subsource not in ('BS-HN2', 'BS-HN3','BS-HN4','LO DUC','NGO QUYEN');
+
+update cfcpub.agent_a
+set 	f_channel='BS-HN'
+Where 	f_channel='BRANCH'  and subsource in ('BS-HN2', 'BS-HN3','BS-HN4','LO DUC','NGO QUYEN');
+
+run;
+
+proc sort data=cfcpub.agent_a;by inspector_id month_rpt;run;
+data 	cfcpub.agent_A;
+set 	cfcpub.agent_a;
+by inspector_id month_rpt;
+lag_jobtype=lag(jobtype);
+if first.inspector_id then lag_jobtype='';
+
+if lag_jobtype in ('Fixed Field Agent','FS Fixed Agent','TMR') and jobtype='Variable Field Agent' then Fixed2Varbl=1;
+else Fixed2Varbl=0;
+run;
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+%END;
+%MEnd;
+%Collectiondump
+
+proc contents
+data	=	cfcpub.agent_A
+memtype	=	data
+out		=	out noprint;
+run;
+
+proc freq data=cfcpub.agent_a; tables date_of_code_creation;
+
+DATA CFCPUB.AGENT_A;
+set cfcpub.agent_A;
+label AGENT_ID				= 'AGENTID';
+label BROKERNAME			= 'SALESBROKERNAME';
+label DATE_OF_CODE_CREATION	= 'DATEOFCODECREATION';
+label DATE_OF_JOINING		= 'DATEOFJOINING';
+label DATE_OF_QUIT			= 'DATEOFQUIT';
+label INSPECTOR_ID			= 'INSPECTORID';
+label active				= 'active';
+label channelmanager_name	= 'channelmanagername';
+label channelname			= 'channelname';
+label datecode				= 'datecode';
+label f_channel				= 'f_channel';
+label jobtype				= 'jobtype';
+label laststatusofagent		= 'laststatusofagent';
+label month					= 'month';
+label month_joining			= 'month_joining';
+label month_quit			= 'month_quit';
+label month_rpt				= 'month_rpt';
+label newactive				= 'newactive';
+label newdeactive			= 'newdeactive';
+label productname			= 'productname';
+label quit_reason			= 'quit_reason';
+label statusofagent			= 'statusofagent';
+label subsource				= 'subsource';
+label vingroup				= 'vingroup';
+label vintage				= 'agentvintage';
+label AGENT_NAME			= 'AGENTNAME';
+label Fixed2Varbl			= 'Fixed2Varbl';
+if input(month,monyy5.) > intnx('month',today(),-25);
+run;
+
+proc freq data= CFCPUB.AGENT_A; tables date_of_quit;
+
+proc datasets lib=work kill;
+run;
+quit;
+
+
+/**/
+/*proc sql;*/
+/*create table cfcpub.Agent_Current as*/
+/*select a.**/
+/*		, 	Branch*/
+/*		,	Location*/
+/*		,	Channel	as Current_Channel*/
+/*		,	'Channel AIS'n*/
+/*		,	'CM/ADO'n*/
+/*		,	STL*/
+/*		,	STL1*/
+/*from 		cfcpub.agent_a a*/
+/*left join 	cfcpub.rca_team b on a.brokername = b.'Team Name'n*/
+/*;*/
+/*run;*/
+
+
+proc freq data=cfcpub01.agent_2; tables month;
+
+
+-- Program
+
+
+/**/
+/*proc sql;*/
+/*create 	table tes2 as*/
+/*select  distinct **/
+/*from 	cfcpub.agent_v*/
+/*where 	(agent_id is not null and	inspector_id is not null) */
+/*order by inspector_id */
+/*		 , agent_id*/
+/*;*/
+/*run;*/
+/**/
+/*data 	tes3;*/
+/*set 	tes2;*/
+/*by 		inspector_id agent_id;*/
+/*if 		last.inspector_id;*/
+/*run;*/
+/**/
+/**/
+/*proc sql;*/
+/*create table his as*/
+/*select  month*/
+/*		, agent_id*/
+/*		, inspector_id*/
+/*		, statusofagent*/
+/*		, jobtype*/
+/*		, brokername*/
+/*		, product as productname*/
+/*		, AGENT_NAME*/
+/*	*/
+/*from 	cfcpub01.agent_2*/
+/*where 	inspector_id is not null*/
+/*and input(month,monyy5.) > intnx('month',today(),-12)*/
+/*order by month*/
+/*		, inspector_id*/
+/*		, agent_id*/
+/*		, statusofagent;*/
+/*run;*/
+/**/
+/*data lasthis;*/
+/*set 	his;*/
+/*by 		month  inspector_id agent_id  statusofagent;*/
+/*if 		last.inspector_id;*/
+/*run;*/
+/**/
+/**/
+/*proc freq data = lasthis;*/
+/*table month;*/
+/*run;*/
+/**/
+/**/
+/*proc sql;*/
+/*create table his1 as*/
+/*select  "FEB19" as month*/
+/*		, agent_id*/
+/*		, inspector_id*/
+/*		, statusofagent*/
+/*		, date_of_joining*/
+/*		, jobtype*/
+/*		, brokername*/
+/*		, product as productname*/
+/*		, AGENT_NAME*/
+/*		*/
+/*from 	tes2*/
+/*where 	inspector_id is not null*/
+/*order by inspector_id*/
+/*		, date_of_joining*/
+/*		, statusofagent;*/
+/*run; */
+/**/
+/*data 	lasthis1;*/
+/*set 	his1;*/
+/*by  	inspector_id date_of_joining statusofagent ;*/
+/*if 		last.inspector_id;*/
+/*drop 	date_of_joining;*/
+/*run;*/
+/**/
+/*data 	his2;*/
+/*set 	lasthis lasthis1;*/
+/*run; */
+/**/
+/*proc sql;*/
+/*create table his3 as*/
+/*select 	a.**/
+/*		, 	b.agent_code*/
+/*		, 	date_of_joining*/
+/*		, 	DATE_OF_CODE_CREATION*/
+/*		, 	date_of_quit*/
+/*		, 	quit_reason*/
+/*		, 	channelname*/
+/*		, 	channelmanager_name*/
+/*from 		his2 a */
+/*left join  	tes3 b on a.inspector_id	=	b.inspector_id*/
+/*;*/
+/*run;*/
+/**/
+/*proc sql;*/
+/*create table agent as*/
+/*select distinct **/
+/*		,	input(month,monyy5.) format monyy5. as month_rpt*/
+/*from 	his3*/
+/*where 	inspector_id 	is not null */
+/*or 	  	inspector_id 	^= '.'*/
+/*order by 	inspector_id*/
+/*			, 	input(month,monyy5.);*/
+/*run;*/
+/**/
+/*proc sort data	=	agent;*/
+/*by inspector_id month_rpt agent_id;*/
+/*run;*/
+/**/
+/*data 	sort_agent;*/
+/*set 	agent;*/
+/*by 		inspector_id month_rpt agent_id ;*/
+/*format 	laststatusofagent $25.;*/
+/*laststatusofagent	=	lag(statusofagent);*/
+/*if first.inspector_id then laststatusofagent='';*/
+/*run;*/
+/**/
+/*proc sort data	=	sort_agent;*/
+/*by  inspector_id month_rpt agent_id;*/
+/*run;*/
+/**/
+/*data agent_a ;*/
+/*set sort_agent;*/
+/*if 	statusofagent='Active' and laststatusofagent='Active' then do;*/
+/*	active		=	1;*/
+/*	newactive	=	0;*/
+/*	newdeactive	=	0;*/
+/*end;*/
+/**/
+/*else if statusofagent='Active' and laststatusofagent  not in ('Active') then do;*/
+/*	active		=	1;*/
+/*	newactive	=	1;*/
+/*	newdeactive	=	0;*/
+/*end;*/
+/**/
+/*else if statusofagent='Deactive' and laststatusofagent  in ('Active') then do;*/
+/*	active		=	0;*/
+/*	newactive	=	0;*/
+/*	newdeactive	=	1;*/
+/*end;*/
+/**/
+/*else if statusofagent='Deactive' and laststatusofagent  in ('') then do;*/
+/*	active		=	0;*/
+/*	newactive	=	1;*/
+/*	newdeactive	=	1;*/
+/*end;*/
+/**/
+/*else if statusofagent='Deactive' and laststatusofagent  in ('Deactive') then do;*/
+/*	active		=	0;*/
+/*	newactive	=	0;*/
+/*	newdeactive	=	0;*/
+/*end;*/
+/**/
+/*run;*/
