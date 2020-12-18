@@ -1,0 +1,87 @@
+APPL_REF_NUM,INPUTTER_ID,USER_ROLE,COMMENTS,INPUTTER_NAME,INPUTTED_DATE,NOTE_CODE,PIN_CODE,FV_DATE,FV_NAME,FV_ADMIN_NAME
+2011270002126948,DT2ROHKT,,"BankCode:01204009#BankName:NHNO CN TT Thanh Toan#AccountNo:5590206610002#BankBranch:BÌNH DUONG#AccountHolder:BÙI TH? THANH KI?U#PurposeCode:CS_HOR#PurposeName:Consumer Loan - House renovation#DisbursalAmount:58319400#Narration:CHUYEN TIEN#TransactionType:Seller			
+",TRANG,16DEC2020:11:38:12,CL43_01,,,,
+2012010002130821,NGOROLTK,,"BankCode:79310001#BankName:TECHCOMBANK HCM#AccountNo:19036517734018#BankBranch:HA NOI#AccountHolder:NGUYEN THI THU TRANG#PurposeCode:CS_BFHA#PurposeName:Consumer Loan - Buy furniture, house appliance#DisbursalAmount:29309400#Narration:thanh toan tien mua ban ghe#TransactionType:Seller			
+",KIEN,16DEC2020:11:46:20,CL43_01,,,,
+2012050002138627,FOXROLTT,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:0061001119161#BankBranch:KHANH HOA#AccountHolder:VUONG TUONG AN#PurposeCode:LN_HOR#PurposeName:Living need - House renovation#DisbursalAmount:65000000#Narration:MUA NVL XD#TransactionType:Seller			
+",Tam,16DEC2020:15:24:10,CL43_01,,,,
+2012070002139159,DANBMNTNA,,BankCode:01203002#BankName:VCB VN SGD#AccountNo:0351000692471#BankBranch:bac ninh#AccountHolder:nguyen van thieu#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:29360700#Narration:mua xe may#TransactionType:Seller,An,16DEC2020:13:14:20,CL43_01,,,,
+2012070002140587,DT2ROTNH,,"BankCode:79201001#BankName:VIETINBANK CN TP HCM#AccountNo:105006788831#BankBranch:Hai Duong#AccountHolder:Nguyen Huu Dong#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:82620800#Narration:Thanh toan tien mua xe DangVanMuoi 82,620,800#TransactionType:Seller			
+",HOANG,16DEC2020:10:30:06,CL43_01,,,,
+2012070002140636,BIDROLHP,,"BankCode:79303001#BankName:SACOMBANK#AccountNo:070116527462#BankBranch:DONG THAP#AccountHolder:LE THI THU NGAN#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:38880400#Narration:MUA XE#TransactionType:Seller			
+",Phi,16DEC2020:10:47:50,CL43_01,,,,
+2012080002142380,LOTROTTHA,,"BankCode:79310001#BankName:TECHCOMBANK HCM#AccountNo:19034738223015#BankBranch:TRAN THAI TONG#AccountHolder:PHAM THI HAI#PurposeCode:CS_BFHA#PurposeName:Consumer Loan - Buy furniture, house appliance#DisbursalAmount:10000000#Narration:MUA TIVI#TransactionType:Seller			
+",Anh,16DEC2020:12:53:15,CL43_01,,,,
+2012080002142483,DT2BMHTL,,BankCode:01203002#BankName:VCB VN SGD#AccountNo:0051000546605#BankBranch:QUY NHON#AccountHolder:NGUYEN VAN HAU#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:35000000#Narration:chuyen tien mua xe may#TransactionType:Seller,Linh,16DEC2020:11:37:29,CL43_01,,,,
+2012080002142492,NGOROLTK,,"BankCode:79201001#BankName:VIETINBANK CN TP HCM#AccountNo:103869076938#BankBranch:HA NOI#AccountHolder:NGUYEN THI YEN#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:50000000#Narration:thanh toan tien mua xe#TransactionType:Seller			
+",KIEN,16DEC2020:11:00:06,CL43_01,,,,
+2012080002143014,LOTROTTBH,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:0341006941678#BankBranch:HÀ N?I#AccountHolder:PH?M QUANG Ð?O#PurposeCode:CS_BFHA#PurposeName:Consumer Loan - Buy furniture, house appliance#DisbursalAmount:39073600#Narration:Nguyen Van Dong chuyen tien mua ban ghe#TransactionType:Seller			
+",HUONG,16DEC2020:12:13:22,CL43_01,,,,
+2012080002143070,STCRODKN,,"BankCode:79201001#BankName:VIETINBANK CN TP HCM#AccountNo:109871576937#BankBranch:HCM#AccountHolder:TRAN THI THANH VAN#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:29000000#Narration:DUONG MANH CUONG CHUYEN TIEN MUA XE#TransactionType:Seller			
+",Nguyen,16DEC2020:13:55:17,CL43_01,,,,
+2012080002143079,BNIRONDH,,"BankCode:79201001#BankName:VIETINBANK CN TP HCM#AccountNo:103005843610#BankBranch:THANH HOA#AccountHolder:VIEN DINH VU#PurposeCode:CS_BFHA#PurposeName:Consumer Loan - Buy furniture, house appliance#DisbursalAmount:77674400#Narration:MUA DO DUNG GIA DINH#TransactionType:Seller			
+",Ha,16DEC2020:11:05:12,CL43_01,,,,
+2012090002143667,BNIROBTHM,,"BankCode:79310001#BankName:TECHCOMBANK HCM#AccountNo:19034306369019#BankBranch:B?C NINH#AccountHolder:NGUYEN QUOC QUYEN#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:15000000#Narration:mua xe#TransactionType:Seller			
+",MY,16DEC2020:11:55:11,CL43_01,,,,
+2012090002144050,LOTROTTBH,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:0061001041319#BankBranch:KHÁNH HÒA#AccountHolder:HU?NH TH? THU TRANG#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:30000000#Narration:Le Hoai Hai chuyen tien mua xe may#TransactionType:Seller			
+",HUONG,16DEC2020:11:03:19,CL43_01,,,,
+2012090002145130,PICOROPTNH,,"BankCode:79201001#BankName:VIETINBANK CN TP HCM#AccountNo:101867795564#BankBranch:HCM#AccountHolder:LE THI NGOC HA#PurposeCode:CS_HOR#PurposeName:Consumer Loan - House renovation#DisbursalAmount:77760800#Narration:MUA VAT LIEU SUA NHA#TransactionType:Seller			
+",HAN,16DEC2020:11:01:42,CL43_01,,,,
+2012090002145266,DT1ROHHK,,"BankCode:79307001#BankName:ACB#AccountNo:243757269#BankBranch:HCM#AccountHolder:Nguy?n Van Sáng#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:38891600#Narration:Chuy?n ti?n mua xe g?n máy#TransactionType:Seller			
+",KHANH,16DEC2020:12:02:36,CL43_01,,,,
+2012100002145750,ALPRONVL,,"BankCode:79310001#BankName:TECHCOMBANK HCM#AccountNo:19031513971013#BankBranch:THAI NGUYEN#AccountHolder:NGUYEN DINH QUY#PurposeCode:LN_BMOT#PurposeName:Living need - Buy means of transportation#DisbursalAmount:100000000#Narration:KH MUA XE CAN 120TR#TransactionType:Seller			
+",Lanh,16DEC2020:09:58:19,CL43_01,,,,
+2012100002145750,ALPRONVL,,"BankCode:79310001#BankName:TECHCOMBANK HCM#AccountNo:19031513971013#BankBranch:THAI NGUYEN#AccountHolder:NGUYEN DINH QUY#PurposeCode:LN_BMOT#PurposeName:Living need - Buy means of transportation#DisbursalAmount:100000000#Narration:KH MUA XE CAN 120TR#TransactionType:Seller			
+",Lanh,16DEC2020:09:59:36,CL43_01,,,,
+2012100002145898,DT2BMHTL,,BankCode:01203002#BankName:VCB VN SGD#AccountNo:0281000218664#BankBranch:binh duong#AccountHolder:nguyen thoi kim ngan#PurposeCode:CS_HOR#PurposeName:Consumer Loan - House renovation#DisbursalAmount:20000000#Narration:mua VLXD#TransactionType:Seller,Linh,16DEC2020:10:14:28,CL43_01,,,,
+2012100002145956,BNIRONDH,,"BankCode:79201001#BankName:VIETINBANK CN TP HCM#AccountNo:100871422152#BankBranch:BAC NINH#AccountHolder:NGUYEN BAO CUONG#PurposeCode:CS_HOR#PurposeName:Consumer Loan - House renovation#DisbursalAmount:48934500#Narration:MUA VLXD#TransactionType:Seller			
+",Ha,16DEC2020:12:07:30,CL43_01,,,,
+2012100002146185,DT2BMHTL,,BankCode:79310001#BankName:TECHCOMBANK HCM#AccountNo:19035625277018#BankBranch:ha noi#AccountHolder:tran minh ha#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:50000000#Narration:mua xe may#TransactionType:Seller,Linh,16DEC2020:12:07:52,CL43_01,,,,
+2012100002146382,NGORODVQ,,"BankCode:01202002#BankName:BIDV CN SGD 1#AccountNo:46610000331468#BankBranch:HA NOI#AccountHolder:DOAN VAN THINH#PurposeCode:CS_BFHA#PurposeName:Consumer Loan - Buy furniture, house appliance#DisbursalAmount:29360700#Narration:THANH TOAN TIEN MUA DO DUNG GIA DINH#TransactionType:Seller			
+",Quang,16DEC2020:12:31:55,CL43_01,,,,
+2012100002146488,DT2ROHKT,,"BankCode:79303001#BankName:SACOMBANK#AccountNo:050107307106#BankBranch:CN BINH DUONG#AccountHolder:NGUYEN HOANG NHI#PurposeCode:CS_BFHA#PurposeName:Consumer Loan - Buy furniture, house appliance#DisbursalAmount:39011200#Narration:CHUYEN TIEN#TransactionType:Seller			
+",TRANG,16DEC2020:11:08:51,CL43_01,,,,
+2012100002146490,DONROBVL,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:0871004236246#BankBranch:DONG NAI#AccountHolder:NGUYEN QUOC TRAI#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:24382000#Narration:CHUYEN TIEN MUA XE MAY#TransactionType:Seller			
+",Lam,16DEC2020:09:31:37,CL43_01,,,,
+2012100002146772,DT3ROVTHD,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:0071000641991#BankBranch:HCM#AccountHolder:Tran Thi Nhu Nguyet#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:39128800#Narration:chuyen tien mua xe#TransactionType:Seller			
+",DUNG,16DEC2020:10:30:47,CL43_01,,,,
+2012100002146955,DT2BMHTL,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:0171003478422#BankBranch:Binh Dinh#AccountHolder:Dang Tieu My#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:19630400#Narration:thanh toan tien mua xe NguyenThiYenTrinh 19,630,400#TransactionType:Seller",Linh,16DEC2020:11:24:45,CL43_01,,,,
+2012100002147122,DT3RONTD,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:0181003637013#BankBranch:HCM#AccountHolder:DOAN TRONG NHAN#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:68215700#Narration:mua xe#TransactionType:Seller			
+",DUNG,16DEC2020:15:00:39,CL43_01,,,,
+2012100002147450,LOTROTTC,,BankCode:01203002#BankName:VCB VN SGD#AccountNo:0821000120094#BankBranch:HA NOI#AccountHolder:Nguy?n Quang Huy#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:72900700#Narration:Thanh toán ti?n mua xe máy#TransactionType:Seller,CUONG,16DEC2020:14:05:39,CL43_01,,,,
+2012100002147459,BIDRONTTD,,"BankCode:79307001#BankName:ACB#AccountNo:11790627#BankBranch:HO CHI MINH#AccountHolder:NGUYEN DINH QUOC CUONG#PurposeCode:CS_BFHA#PurposeName:Consumer Loan - Buy furniture, house appliance#DisbursalAmount:29466900#Narration:mua do trong nha#TransactionType:Seller			
+",Duong,16DEC2020:13:58:16,CL43_01,,,,
+2012100002147560,DT2ROTNH,,"BankCode:79317002#BankName:SEABANK CN HCM#AccountNo:96000014393845#BankBranch:Tien Giang#AccountHolder:Huynh Le Nhan Duc#PurposeCode:CS_HOR#PurposeName:Consumer Loan - House renovation#DisbursalAmount:30000000#Narration:thanh toan tien mua VLXD Huynh Van Ut 30,000,000 VND#TransactionType:Seller			
+",HOANG,16DEC2020:09:02:09,CL43_01,,,,
+2012110002147939,DT3ROBBN,,"BankCode:79310001#BankName:TECHCOMBANK HCM#AccountNo:19034603800012#BankBranch:hcm#AccountHolder:Vu Thi Tranh#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:100000000#Narration:mua xe#TransactionType:Seller			
+",NGAN,16DEC2020:12:02:42,CL43_01,,,,
+2012110002148004,NGORODVQ,,"BankCode:79201001#BankName:VIETINBANK CN TP HCM#AccountNo:105003496238#BankBranch:HA NOI#AccountHolder:TRAN DUC KHANH#PurposeCode:CS_BFHA#PurposeName:Consumer Loan - Buy furniture, house appliance#DisbursalAmount:40000000#Narration:THANH TOAN TIEN MUA DO DUNG GD#TransactionType:Seller			
+",Quang,16DEC2020:12:55:06,CL43_01,,,,
+2012110002148144,MSTROLHM,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:0111000276485#BankBranch:HCM#AccountHolder:TRUONG NHUT BINH#PurposeCode:CS_HOR#PurposeName:Consumer Loan - House renovation#DisbursalAmount:39079200#Narration:sua chua nha#TransactionType:Seller			
+",My,16DEC2020:10:51:22,CL43_01,,,,
+2012110002148187,DT2BMHTL,,BankCode:01202002#BankName:BIDV CN SGD 1#AccountNo:46610000128068#BankBranch:hung yen#AccountHolder:nguyen van hoang#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:20000000#Narration:mua xe may#TransactionType:Seller,Linh,16DEC2020:15:05:00,CL43_01,,,,
+2012110002148207,BIDBMDUP,,BankCode:79310001#BankName:TECHCOMBANK HCM#AccountNo:19034008906011#BankBranch:BINH DUONG#AccountHolder:NGUYEN BINH#PurposeCode:CS_HOR#PurposeName:Consumer Loan - House renovation#DisbursalAmount:30000000#Narration:mua do sua nha#TransactionType:Seller,Dao,16DEC2020:10:57:49,CL43_01,,,,
+2012110002148274,BNIROBTHM,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:1016884682#BankBranch:b?c ninh#AccountHolder:dao quoc duc#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:25272300#Narration:kh vay mua xe#TransactionType:Seller			
+",MY,16DEC2020:11:07:13,CL43_01,,,,
+2012110002148414,DT1ROVXH,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:1012677573#BankBranch:BAC GIANG#AccountHolder:DANG VAN HOA#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:38879600#Narration:MUA XE#TransactionType:Seller			
+",HIEN,16DEC2020:09:52:28,CL43_01,,,,
+2012110002148475,DANBMNTNA,,BankCode:79305001#BankName:NH EXIMBANK HOI SO#AccountNo:180010301002944#BankBranch:BINH DUONG#AccountHolder:LE THI BAO TRAM#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:29000000#Narration:Mua xe#TransactionType:Seller,An,16DEC2020:10:21:22,CL43_01,,,,
+2012110002148491,STCBMDMA,,BankCode:79303001#BankName:SACOMBANK#AccountNo:070097636662#BankBranch:HCM#AccountHolder:NGUYEN QUOC THANG#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:50000000#Narration:Mua xe may#TransactionType:Seller,Anh,16DEC2020:13:03:48,CL43_01,,,,
+2012110002148597,ALPBMPKN,,BankCode:01203002#BankName:VCB VN SGD#AccountNo:0481000809022#BankBranch:DONG NAI#AccountHolder:NGUYEN NGOC THIEN#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:53460500#Narration:MUA XE MÁY#TransactionType:Seller,Nhi,16DEC2020:10:43:18,CL43_01,,,,
+2012110002148702,LOTROTNN,,"BankCode:79310001#BankName:TECHCOMBANK HCM#AccountNo:19035941934012#BankBranch:Me Linh - Ha Noi#AccountHolder:Nguyen Manh Quan#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:34254100#Narration:mua xe may#TransactionType:Seller			
+",Ngoc,16DEC2020:11:17:20,CL43_01,,,,
+2012110002148741,DANROLTPN,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:0351001208815#BankBranch:BAC NINH#AccountHolder:NGAN VAN DUNG#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:39128800#Narration:mua xe#TransactionType:Seller			
+",NHUNG,16DEC2020:10:21:35,CL43_01,,,,
+2012110002148749,DT3BMDTT,,BankCode:79201001#BankName:VIETINBANK CN TP HCM#AccountNo:106867122732#BankBranch:BAC GIANG#AccountHolder:NGUYEN THI TUYET#PurposeCode:CS_HOR#PurposeName:Consumer Loan - House renovation#DisbursalAmount:39147600#Narration:chuyen tien mua VLXD#TransactionType:Seller,DOAN,16DEC2020:11:03:03,CL43_01,,,,
+2012110002148766,DONRONTPU,,"BankCode:79201001#BankName:VIETINBANK CN TP HCM#AccountNo:106872311473#BankBranch:DONG NAI#AccountHolder:NGUYEN CONG MY#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:29466900#Narration:MUA XE#TransactionType:Seller			
+",UYEN,16DEC2020:12:21:50,CL43_01,,,,
+2012110002148796,DT1ROTHN,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:1015860639#BankBranch:Bac Ninh#AccountHolder:Luong Thi Minh Chau#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:34020300#Narration:Chuyen tien mua xe may#TransactionType:Seller			
+",NHAN,16DEC2020:10:07:23,CL43_01,,,,
+2012110002148952,DT1ROHHK,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:1016549580#BankBranch:H?i Duong#AccountHolder:Nguy?n Van Chung#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:30000000#Narration:Chuy?n ti?n mua xe g?n máy#TransactionType:Seller			
+",KHANH,16DEC2020:15:18:49,CL43_01,,,,
+2012110002148967,ALPBMPKN,,"BankCode:79307001#BankName:ACB#AccountNo:56398888#BankBranch:Thanh Hoa#AccountHolder:Duong Van Thanh#PurposeCode:CS_BFHA#PurposeName:Consumer Loan - Buy furniture, house appliance#DisbursalAmount:28332700#Narration:Chuyen tien mua do gia dung#TransactionType:Seller",Nhi,16DEC2020:12:07:13,CL43_01,,,,
+2012110002148981,BNIRONDH,,"BankCode:01319001#BankName:OCEAN BANK CN HA NOI#AccountNo:06006024112200068#BankBranch:HAI DUONG#AccountHolder:PHAM VAN BAU#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:30000000#Narration:C?C MUA XE MAY#TransactionType:Seller			
+",Ha,16DEC2020:12:26:22,CL43_01,,,,
+2012110002148992,BIDBMDUP,,"BankCode:79201001#BankName:VIETINBANK CN TP HCM#AccountNo:102868718400#BankBranch:bac ninh#AccountHolder:linh thi thuong#PurposeCode:CS_BFHA#PurposeName:Consumer Loan - Buy furniture, house appliance#DisbursalAmount:29258400#Narration:mua do dung gia dinh#TransactionType:Seller",Dao,16DEC2020:11:03:21,CL43_01,,,,
+2012110002149119,FOXROLTT,,"BankCode:01203002#BankName:VCB VN SGD#AccountNo:0401001406366#BankBranch:DONG NAI#AccountHolder:LE TAN THOI#PurposeCode:CS_BMOT#PurposeName:Consumer Loan - Buy means of transportation#DisbursalAmount:97093000#Narration:MUA XE MAY#TransactionType:Seller			
+",Tam,16DEC2020:15:08:59,CL43_01,,,,
