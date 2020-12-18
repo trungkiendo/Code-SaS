@@ -1,0 +1,81 @@
+-- Check
+
+<?xml version="1.0" encoding="utf-16"?><Collection><Elements><Element Type="SAS.EG.ProjectElements.CodeTask" IsSelected="true" PosX="24" PosY="300"><Element><Label>Check</Label><Type>TASK</Type><Container>PFD-fkiolXRfLcVmH5GS</Container><ID>CodeTask-ajMRelv1oYsjseoI</ID><CreatedOn>637067280419319288</CreatedOn><ModifiedOn>637344646793631634</ModifiedOn><ModifiedBy>Tuong, Le Hai</ModifiedBy><ModifiedByEGID>cfclhtuong</ModifiedByEGID><ModifiedByEGVer>7.100.1.2711</ModifiedByEGVer><HasSerializationError>False</HasSerializationError><InputIDs /></Element><SubmitableElement><UseGlobalOptions>True</UseGlobalOptions><Server>SASMain</Server><HASERROR>False</HASERROR><HASWARNING>False</HASWARNING><HtmlActiveOverride>false</HtmlActiveOverride><RtfActiveOverride>false</RtfActiveOverride><PdfActiveOverride>false</PdfActiveOverride><SasReportActiveOverride>true</SasReportActiveOverride><ListingActiveOverride>false</ListingActiveOverride><AutoDisplayActiveOverride>true</AutoDisplayActiveOverride><PdfStyleOverride>Pearl</PdfStyleOverride><RtfStyleOverride>RTF</RtfStyleOverride><HtmlStyleNameOverride>HtmlBlue</HtmlStyleNameOverride><HtmlStyleCategoryOverride>BuiltIn</HtmlStyleCategoryOverride><HtmlStyleUrlOverride>C:\Program Files\SASHome\SASEnterpriseGuide\7.1\Styles\HtmlBlue.css</HtmlStyleUrlOverride><SasReportStyleNameOverride>HtmlBlue</SasReportStyleNameOverride><SasReportStyleCategoryOverride>BuiltIn</SasReportStyleCategoryOverride><SasReportStyleUrlOverride>C:\Program Files\SASHome\SASEnterpriseGuide\7.1\Styles\HtmlBlue.css</SasReportStyleUrlOverride><GraphDeviceOverride>ActiveX</GraphDeviceOverride><UseProjectSubmitOptions>true</UseProjectSubmitOptions><SubmitToGrid>false</SubmitToGrid><QueueSubmitsForServer>true</QueueSubmitsForServer><ExpectedOutputDataList><DataDescriptor><PATHTYPE>Libref</PATHTYPE><ServerName>SASMain</ServerName><LibraryName>CFCPub</LibraryName><Label>RCTH_BROKER_SOURCE_BK</Label><Member>RCTH_BROKER_SOURCE_BK</Member></DataDescriptor><DataDescriptor><PATHTYPE>Libref</PATHTYPE><ServerName>SASMain</ServerName><LibraryName>WORK</LibraryName><Label>T</Label><Member>T</Member></DataDescriptor></ExpectedOutputDataList><Parameters /><ExecutionTimeSpan>PT5.1005389S</ExecutionTimeSpan><JobRecipe><JobRecipe><log>Log-QTGJYqDCiTNVT6mU</log><code>Code-rShPwhcfpMVsfcCW</code><OutputDataList><ID>ShortCutToData-Jv4qsZmbot8gsLkk</ID><ID>ShortCutToData-gRY42ifabwOwjFYW</ID><ID>ShortCutToData-bfwsbU6H6UqKltSW</ID><ID>ShortCutToData-1i8D6yuy9pENTZT2</ID></OutputDataList><ODSResultsList><ID>ODSResult-3HSVvoOTcMLysv2f</ID><ID>ODSResult-WtYoVzam52e2x9Jh</ID></ODSResultsList></JobRecipe></JobRecipe></SubmitableElement><CodeTask IsClipboardXML="True"><IncludeWrapper>True</IncludeWrapper><Embedded>True</Embedded><Code>proc contents data=cfcpub01.rcth_broker_source;
+
+data cfcpub.rcth_broker_source_bk;
+set cfcpub01.rcth_broker_source;
+run;
+
+/*data cfcpub.rctl_broker_source_bk;*/
+/*set cfcpub01.rcth_broker_source;*/
+/*run;*/
+
+/*check new team*/
+proc sql;
+create table t as
+select *
+from cfcpub01.rcth_team
+where team_name not in (select team_name from cfcpub.rcth_broker_source_bk);
+run;
+
+/*check new null team*/
+
+proc sql;
+create table checkteam as
+select source,subsource,broker_name,count(app_id) as app
+from cfcstudy.cr_application_prd
+where upcase(Source) in ('','UNIDENTIFIED')
+group by 1,2,3
+;
+run;
+
+/*proc freq  data=cfcstudy.CR_APPLICATION_prd;*/
+/**/
+/*table Source / crosslist nocol nocum norow nopercent;*/
+/*run;*/</Code><DNA /></CodeTask></Element></Elements></Collection>
+
+-- Add new
+
+
+proc sql;
+create table team1 as
+select distinct upcase(team_name)  as team_name              
+              , upcase(unit)       as source
+			  , upcase(region)     as subsource
+			  , upcase(subchannel) as subsource_detail
+			  , rsm_sm
+			  , sm_so
+			  , so_ss
+/*			  , upcase(old_channel)     as old_source*/
+/*			  , upcase(old_branch)      as old_subsource*/
+/*			  , upcase(old_channel_ais) as old_subsource_detail*/
+/*			  , upcase(old_location)    as old_location*/
+from   cfcpub01.rcth_team
+;
+quit;
+
+proc sql;
+create table check_dup as
+select team_name, count(*) as cnt
+from team1
+group by 1
+having count(*)>1;
+quit;
+
+/*proc sql;*/
+/*update team1 set old_source='TELESALES' where old_source='TELE SALES';*/
+/*update team1 set old_source='BRANCH' where old_source='BS';*/
+/*update team1 set old_source='FIELD SALES' where old_source='DS';*/
+/*update team1 set old_source='UNIDENTIFIED' where old_source='DUMMY';*/
+/*update team1 set old_source='TELESALES' where old_source='TOPUP';*/
+/*update team1 set old_source='UNIDENTIFIED' where old_subsource='BRANCH NETWORK';run;*/
+
+proc sql;
+update team1 set source='UNIDENTIFIED' where source='BRANCH NETWORK';
+update team1 set source='UNIDENTIFIED' where source='DUMMY';
+run;
+
+
+data cfcpub01.rcth_broker_source;
+set  team1;
+run;
