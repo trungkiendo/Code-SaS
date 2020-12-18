@@ -1,0 +1,204 @@
+/* CIC data */
+proc sql;
+create table CIC_data as
+select appl_ref_num     	 	   format $20.   as app_id,
+	   input(icif_number,8.) 	   format 8.     as cust_id,
+	   input(oth_liab_seq_num,10.) format 10. 	 as seq,
+	   ol_cic_short_term						 as total_bal_6m,
+	   ol_cic_max_card_usage					 as max_card_usage_3m,
+	   ol_cic_banks_with_pl_loan				 as bank_debt_current,
+	   ol_cic_months_overdue_pl					 as num_mon_g2_pl_24m,
+	   ol_cic_months_overdue_card				 as num_mon_10dpd_card_36m
+
+from idalpub1.O_TRN_OCR_OTH_LIB_DTLS_PRD
+where dde_subtab_id = 'CICScoreboard'
+order by 1,2,3;
+run;
+
+/* A-Score */
+proc sql;
+create table SYS_score as
+select appl_ref_num 	as app_id,
+	   seq_num 			as seq,
+	   last_upd_dt  	as scoring_date,
+	   input(value1,3.)	as score
+from idalpub1.O_TRN_OCR_BRERESULT_DTL_PRD
+where key1 = 'PVFC_SCORE_CALC' and input(value1,3.) > 0
+order by 1,2,3;
+run;
+
+data SYS_score;
+set  SYS_score;
+by app_id seq;
+if last.app_id;
+run;
+
+
+/* Insurance */
+proc sql;
+create table insurance as
+select icif_number 		  as cust_id,
+	   appl_ref_num 	  as app_id,
+	   inc_exp_seq_num 	  as seq, 
+	   policy_holder_name as insurance_company
+
+from idalpub1.O_TRN_OCR_INCOME_EXPEN_DTLS_PRD
+where income_save_flag = 'INCOME_IPSP' 
+  and income_exp_type  = 'INCOME'
+order by 1,3;
+run;
+
+data insurance;
+set insurance;
+by cust_id seq;
+if last.cust_id;
+run;
+
+/* Income */
+proc sql;
+create table income as
+select icif_number 				  as cust_id,
+	   appl_ref_num 			  as app_id,
+	   inc_exp_seq_num 			  as seq, 
+
+	   case when income_exp_type = 'INCOME'  then gross_income else 0 end as actual_income
+
+from idalpub1.O_TRN_OCR_INCOME_EXPEN_DTLS_PRD
+where income_save_flag = 'INCOME_COMP'
+order by 1, 4 desc;
+
+data income;
+set  income;
+by cust_id descending actual_income;
+if first.cust_id;
+run;
+
+proc sql;
+create table income as
+select cust_id,
+	   app_id,
+	   sum(actual_income) as actual_income
+from income
+group by 1,2;
+run;
+
+/* Consolidate */
+proc sql;
+create table SYS_score_1 as
+select a.app_id,
+	   b.cust_id,
+	   datepart(a.scoring_date) format date9. as scoring_date,
+
+	   c.gender				 		          as V_gender,
+	   f.value2 		        format $20.   as V_company_category,
+	   g.insurance_company   			      as V_insurance,
+	   input(d.time_on_job,4.)  format 4.     as V_TOJ,
+	   h.actual_income						  as V_income,
+
+	   b.total_bal_6m			format 3.	  as V_bal_6m,
+	   b.max_card_usage_3m		format 10.	  as V_card_usage_3m,
+       b.bank_debt_current		format 3.	  as V_bank_debt,
+	   b.num_mon_g2_pl_24m		format 3.	  as V_mon_g2_pl_24m,
+	   b.num_mon_10dpd_card_36m	format 3.	  as V_mon_10dpd_card_36m,
+
+	   case when f.value2 in ('PS','TOP PS') 		  then 7  else 0 end as S_company,
+	   case when c.gender = 'F' 					  then 16 else 0 end as S_gender,
+	   case when g.insurance_company is not null	  then 13 else 0 end as S_insurance,
+	   case when input(d.time_on_job,4.)/12 > 2		  then 17 else 0 end as S_toj,
+	   case when h.actual_income > 6000000			  then 9  else 0 end as S_income,
+
+	   case when b.total_bal_6m <= 5 			     then 15 
+												     else 0 
+	   end as S_bal_6m,
+
+	   case when b.max_card_usage_3m = -999999999    then 24
+	   		when b.max_card_usage_3m <= 90 		     then 24
+												     else 0
+	   end as S_card_usage_3m,
+	   
+	   case when b.bank_debt_current = 0 		     then 85
+	   		when b.bank_debt_current = 1 		     then 30
+										 		     else 0
+	   end as S_bank_debt,
+
+	   case when b.num_mon_g2_pl_24m = 0 			 then 84
+	   		when b.num_mon_g2_pl_24m between 1 and 4 then 28
+													 else 0
+	   end as S_mon_g2_pl_24m,
+
+	   case when b.num_mon_10dpd_card_36m = 0 		 then 70 
+													 else 0 
+	   end as S_mon_10dpd_card_36m,
+
+	   a.score as SYS_score,
+
+	   287  + 0 
+			+ calculated S_company
+			+ calculated S_gender
+			+ calculated S_insurance
+			+ calculated S_toj
+			+ calculated S_income
+
+			+ calculated S_bal_6m
+			+ calculated S_card_usage_3m
+			+ calculated S_bank_debt
+			+ calculated S_mon_g2_pl_24m
+			+ calculated S_mon_10dpd_card_36m as MIS_score
+
+from SYS_score     			   				  a
+left join CIC_data 			   				  b on  a.app_id 		   = b.app_id
+left join idalpub1.O_TRN_OCR_DE_PER_PRD 	  c on  a.app_id 		   = c.appl_ref_num
+left join idalpub1.O_TRN_OCR_COM_OCC_PRD 	  d on  c.icif_number      = d.icif_number
+left join idalpub1.O_OCR_GENERAL_PARAM_MB_PRD f on  d.company_category = f.value1
+											  	and f.key1 			   = 'COMPANY_CATEGORY'
+left join insurance 						  g on  a.app_id  	       = g.app_id
+left join income							  h on  a.app_id		   = h.app_id
+
+;
+run;
+
+proc sql;
+create table cfcpub.CR_A_SCORE_ph as
+select app_id,
+	   cust_id,
+	   scoring_date,
+	   SYS_score as final_score,
+	   MIS_score,	 
+	
+	   V_gender,
+	   V_company_category,
+	   V_insurance,
+	   V_TOJ,
+	   V_income,
+
+	   case when ABS(SYS_score - MIS_score) = 59 then 'Y' else 'N' end as V_existing_cust,
+
+	   V_bal_6m,
+	   V_card_usage_3m,
+	   V_bank_debt,
+	   V_mon_g2_pl_24m,
+	   V_mon_10dpd_card_36m, 
+
+	   287 as coefficient,
+
+	   S_gender,
+	   S_company,
+	   S_insurance,
+	   S_TOJ,
+	   S_income,
+
+	   case when calculated V_existing_cust = 'Y' then 59 else  0 end as S_existing_cust,
+
+	   S_bal_6m,
+	   S_card_usage_3m,
+	   S_bank_debt,
+	   S_mon_g2_pl_24m,
+	   S_mon_10dpd_card_36m
+
+from SYS_SCORE_1
+order by 3,1;
+run;
+
+
+proc freq data=cfcpub.CR_A_SCORE_ph;table scoring_date;
+/*proc contents data=cfcpub.CR_A_SCORE_ph;*/
