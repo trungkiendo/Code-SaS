@@ -1,0 +1,1009 @@
+/*Take loan first become TB6*/
+
+/*proc contents data=CFCPub.CR_DUMP_LEA_2018_2019;*/
+/*proc contents data=cfcpub.cr_dump_lea_2019_linh;*/
+proc contents data=cfcpub.cr_dump_linh_2020;
+proc contents data=cfcpub01.tml_WRITEOFF_bk;
+proc contents data=cfcpub01.tml_WRITEOFF;
+/*proc contents data=cfcpub.writeoff;*/
+proc freq data=cfcpub01.tml_WRITEOFF; table startdate;
+proc freq data=cfcpub01.tml_WRITEOFF_bk; table startdate;
+
+data cfcpub01.tml_WRITEOFF_bk;
+set cfcpub01.tml_WRITEOFF;
+run;
+
+/*proc sql;*/
+/*delete from cfcpub01.tml_WRITEOFF */
+/*where datepart(startdate) > intnx('month',"&sysdate"d,0,'b'); */
+/*run;*/
+
+proc sql;
+create table temp_data as
+select startdate
+		,	agreementno
+		,	dpd
+		,	bucket
+		,	prinbalance
+/*from 	CFCPub.CR_DUMP_LEA_2018_2019*/
+from 	cfcpub.cr_dump_linh_2020
+where 	bucket = 'TB6' 
+and 	UPCASE(loanstatus) = 'ACTIVE'
+and		datepart(startdate) between intnx("MONTH","&SYSDATE"D,-1,"B")
+							and		intnx("MONTH","&SYSDATE"D,0,"B")
+order by 	agreementno
+			,	startdate;
+run;
+
+
+data 	temp_data1;
+set 	temp_data;
+drop 	startdate;
+by 		agreementno startdate;
+if 		last.agreementno;
+run;
+
+data temp_data1;
+set temp_data1;
+format startdate datetime20.;
+startdate=dhms(intnx("MONTH","&SYSDATE"D,0,"B"),0,0,00);
+run;
+
+/*proc freq data=temp_data1; tables startdate;*/
+
+/*proc sql;*/
+/*update 	temp_data1*/
+/*set 	startdate = input('01JUN2019:00:00:00', datetime20.)*/
+/*where 	datepart(startdate) ^= '01JUNE2019'd;*/
+/*run;*/
+
+proc sql;
+create table PQR_WRITEOFF as
+select 	startdate
+		, 	a.agreementno
+		,  	a.dpd
+		, 	a.bucket
+		, 	a.prinbalance
+		,	b.PRODUCT_CODE as product
+from 		temp_data1	a
+left join 	cfcstudy.CR_APPLICATION b on a.agreementno = b.agreementno
+order by 	agreementno
+			, 	startdate
+;
+quit;
+
+proc sql;
+create table WO_append as
+select distinct *
+from 	PQR_WRITEOFF
+where 	agreementno not in (select distinct agreementno from cfcpub01.tml_WRITEOFF);
+run;
+
+proc sql;
+create table WO_base as
+select startdate format datetime20.
+		,	agreementno length = 20 format $20.
+		,	DPD length = 4 format $4.
+		,	bucket length = 10 format $10.
+		,	Prinbalance format 15.2
+		,	product
+from 	cfcpub01.tml_WRITEOFF;
+run;
+
+proc append base=WO_base data=WO_append force;
+proc freq data=WO_Base; tables startdate;
+
+proc freq data=cfcpub01.tml_WRITEOFF; tables startdate;
+
+data 	cfcpub01.tml_WRITEOFF;
+set 	WO_base;
+run;
+
+
+proc freq data= cfcpub01.tml_WRITEOFF; tables startdate;
+
+proc datasets lib = work kill;run;
+--2
+%let run_date 		= 01AUG2020;
+/*%let cutoff_date 	= 01FEB2019;*/
+
+proc freq data=cfcpub01.tml_ever_del; tables month;
+proc freq data=cfcpub01.tml_ever_del_bk; tables month;
+
+/*proc contents data=cfcpub01.tml_ever_del;*/
+/*proc contents data=cfcpub01.tml_ever_del_bk;*/
+
+data 	ever_del;
+/*set 	CFCPub.CR_DUMP_LEA_2018_2019;*/
+/*set	cfcpub.cr_dump_lea_2019_linh;*/
+set		cfcpub.cr_dump_linh_2020;
+format 	month monyy5.;
+keep 	month agreementno startdate bucket dpd;
+month 	= intnx('month',input(put("&run_date"d,monyy5.),monyy5.),-1,'b');
+where 	agreementno 		^=	"" 
+and 	datepart(startdate) >  	intnx('month',"&run_date"d,-1,'b')
+and 	datepart(startdate) <= 	"&run_date"d;
+run;
+
+proc freq data=ever_del;table startdate;
+
+proc sql;
+create table ever_del_1 as
+select 	month
+		, 	agreementno
+		, 	max(input(dpd,6.)) as max_dpd
+		,	case 	when max(input(dpd,6.))  = 0	or 	max(input(dpd,6.))	=	.
+						then 'a. Never delinquent'
+				 	when max(input(dpd,6.)) between 1  and 4     
+						then 'b. Ever 1 & Never 5'
+				 	when max(input(dpd,6.)) between 5  and 9     
+						then 'c. Ever 5 & Never 10'	
+				 	when max(input(dpd,6.)) between 10 and 14    
+						then 'd. Ever 10 & Never 15'
+				 	when max(input(dpd,6.)) between 15 and 19    
+						then 'e. Ever 15 & Never 20'
+				 	when max(input(dpd,6.)) between 20 and 24   
+						then 'f. Ever 20 & Never 25'
+				 	when max(input(dpd,6.)) between 25 and 29    
+						then 'g. Ever 25 & Never 30'
+				 	when max(input(dpd,6.)) between 30 and 59    
+						then 'h. Ever 30 & Never 60'
+				 	when max(input(dpd,6.)) between 60 and 89    
+						then 'i. Ever 60 & Never 90'
+				 	when max(input(dpd,6.)) >= 90             
+						then 'j. Ever 90'
+		    else 'k. Other' end 
+			as ever_del
+from ever_del
+group by 2,1
+order by 2,1;
+run;
+
+proc freq data=ever_del_1;table month;
+
+proc sort data=cfcpub01.tml_ever_del;by agreementno month;
+
+data 	ever_del_2;
+set 	cfcpub01.tml_ever_del;
+by 		agreementno month;
+if 		last.agreementno;
+run;
+
+proc sql;
+create table ever_del_3 as
+select 	a.agreementno
+		, 	a.month
+		, 	a.max_dpd
+		, 	a.ever_del
+		,	case when a.max_dpd > b.dpd_cum then a.max_dpd 
+											else b.dpd_cum end 
+											as dpd_cum
+		,	case when a.max_dpd > b.dpd_cum then a.ever_del 
+											else b.ever_del_cum end 
+											as ever_del_cum 
+from 		ever_del_1 a 
+left join 	ever_del_2 b on compress(a.agreementno) = compress(b.agreementno);
+run;
+
+data 	cfcpub01.tml_ever_del_bk;
+set 	cfcpub01.tml_ever_del;
+run;
+
+data cfcpub01.tml_ever_del;
+set  ever_del_3
+	 cfcpub01.tml_ever_del;
+run;
+
+/*data cfcpub.CR_EVER_DEL;*/
+/*set  cfcpub.rcm_ever_del;*/
+/*run;*/
+
+/*proc freq data=cfcpub.CR_EVER_DEL; tables month;*/
+
+
+/*data cfcpub01.tml_ever_del;*/
+/*set  cfcpub01.tml_ever_del_bk;*/
+/*run;*/
+
+
+/*proc sql; delete * from cfcpub01.tml_ever_del where month = '01may2019'd; run;*/
+/*proc sql; delete * from cfcpub01.tml_ever_del_bk where month = '01may2019'd; run;*/
+
+
+
+
+proc datasets lib = work kill;run;
+
+--3
+%let run_date 		= 01AUG2020;
+/*%let cutoff_date 	= 01FEB2019;*/
+
+data CFCPub.CR_MONTHEND_BK_LINH;
+set CFCPub.CR_MONTHEND;
+run;
+
+/*proc sql; delete from CFCPub.CR_MONTHEND where datepart(startdate) >= '01aug2019'd; run;*/
+/*proc sql; delete from cfcpub01.tml_PQR_LOAN_WO where datepart(startdate) > '01jul2019'd; run;*/
+
+/* Write-off loans */
+data 	loan_wo;
+/*set 	CFCPub.CR_DUMP_LEA_2018_2019;*/
+/*set	cfcpub.cr_dump_linh_2019;*/
+set		cfcpub.cr_dump_linh_2020;
+keep 	startdate agreementno prinbalance;
+where 	bucket = 'TB6'
+/*and		datepart(startdate) between intnx('DAY',"&run_date"d,-40) and "&run_date"d;*/
+and 	datepart(startdate) between intnx("MONTH","&SYSDATE"D,-1,"B")
+							and		intnx("MONTH","&SYSDATE"D,0,"B");
+run;
+
+proc sort data = loan_wo; by agreementno startdate;
+
+data 	PQR_LOAN_WO;
+set 	loan_wo;
+by 		agreementno startdate;
+if 		first.agreementno;
+run;
+
+proc sql;
+delete from PQR_LOAN_WO
+where compress(agreementno) in (
+						select compress(agreementno)
+						from cfcpub01.tml_PQR_LOAN_WO
+					 );
+run;
+
+/*proc contents data=cfcpub01.tml_PQR_LOAN_WO;*/
+
+data 	cfcpub01.tml_PQR_LOAN_WO_BK;
+set 	cfcpub01.tml_PQR_LOAN_WO;
+run;
+
+/*data 	cfcpub01.tml_PQR_LOAN_WO;*/
+/*set 	cfcpub.PQR_LOAN_WO;*/
+/*run;*/
+
+proc freq data=cfcpub01.tml_PQR_LOAN_WO; table startdate;
+
+proc append base	=	cfcpub01.tml_PQR_LOAN_WO
+			data	=	PQR_LOAN_WO 
+			force;
+
+/*proc sql;*/
+/*create table abc as*/
+/*select * from cfcpub01.tml_PQR_LOAN_WO*/
+/*group by agreementno*/
+/*having count(agreementno) > 1;*/
+/*run;*/
+
+
+/*proc freq data=cfcpub01.tml_ever_del; tables month;*/
+
+
+data 	monthend;
+/*set 	CFCPub.CR_DUMP_LEA_2018_2019;*/
+/*set	cfcpub.cr_dump_lea_2019_linh;*/
+set		cfcpub.cr_dump_linh_2020;
+where 	datepart(startdate) = "&run_date"d;
+format 	report_date date9. report_month monyy5.;
+report_date 	= datepart(startdate)-1;
+report_month 	= input(put(datepart(startdate)-1,monyy5.),monyy5.);
+run;
+
+proc sql;
+create table monthend as
+select 	a.STARTDATE
+		,	a.report_date
+		,	a.report_month
+		,	a.AGREEMENTNO
+		,	a.loanstatus
+		,	b.moa
+		,	intck('month',b.moa,intnx('month',input(put(datepart(a.startdate),monyy5.),monyy5.),-1,'beginning')) as moab
+		,	b.casecount
+		,	b.mod	
+		,	a.due_day
+		,	b.first_emi_date
+		,	intck('month',b.mod,a.report_month) as mob
+		,	a.DPD
+		,	a.BUCKET
+		,	a.prinbalance
+		,	a.prinbalance as enr
+		,	a.prinbalance as enr_newlogic
+		,	a.ARREARINT
+		,	a.ARREARPRIN
+from 		monthend a
+left join 	cfcstudy.cr_application b on a.AGREEMENTNO = b.AGREEMENTNO;
+run;
+
+data 	CR_MONTHEND_LAG_1MONTH;
+set 	cfcpub.cr_monthend;
+if 		datepart(startdate) = intnx("MONTH","&run_date"d,-1,"B");
+run;
+
+proc sql;
+create table loan_monthend as
+select 	a.STARTDATE
+		,	report_date	
+		,	report_month	
+		,	a.AGREEMENTNO	
+		,	LOANSTATUS
+		,	moa
+		,	moab	
+		,	casecount
+		,	mod	
+		,	due_day
+		,	first_emi_date	
+		,	DPD	
+		,	BUCKET
+		,	enr
+		,	enr_newlogic	
+		,	ARREARINT
+		,	ARREARPRIN
+		,	case when b.agreementno is not null then 1 else 0 end as WO /* WO normal */
+		,	case when b.agreementno is not null then intnx('month',datepart(b.startdate),0,'beginning') 
+					else . end format monyy5. as mow
+		,	case when b.agreementno is not null then b.prinbalance else . end as WO_amt
+		,	case when c.agreementno is not null then 1 else 0 end as WO_early  /* WO early */
+		,	case when c.agreementno is not null then c.mow else . end format monyy5. as mow_early
+		,	case when c.agreementno is not null then c.wo_amt else . end as WO_early_amt
+		,	case 	when c.agreementno is not null then c.wo_amt
+					when b.agreementno is not null then b.prinbalance
+					else a.prinbalance end as prinbalance
+from 		monthend 					a
+left join 	cfcpub01.tml_PQR_LOAN_WO 	b 	on compress(a.agreementno) = compress(b.agreementno) and a.startdate >= b.startdate
+left join 	cfcpub01.tml_PQR_DEAD_CASES	c 	on compress(a.agreementno) = compress(c.agreementno) and datepart(a.startdate) >= c.mow
+order by 	a.agreementno;
+run;
+
+
+proc sql;
+create table loan_monthend_1 as
+select 	a.*
+		,	intck('month',b.mod,a.report_month) as mob
+		,	intck('month',max(a.mow,a.mow_early),intnx('month',input(put(datepart(a.startdate),monyy5.),monyy5.),-1,'beginning')) as month_on_wo
+		,	c.bucket as was_bucket
+		,	c.prinbalance as was_prinbalance
+		, 	c.enr as was_enr
+		, 	c.enr_newlogic as was_enr_newlogic
+from 		loan_monthend a
+left join	cfcstudy.cr_application b on compress(a.agreementno) = compress(b.agreementno)
+left join 	CR_MONTHEND_LAG_1MONTH 	c on compress(a.agreementno) = compress(c.agreementno)
+;
+run;
+
+
+proc sql;
+create table loan_monthend_2 as
+select 	a.*
+		, 	b.dpd_cum
+		,	case when b.dpd_cum > input(a.dpd,6.) 
+					then b.dpd_cum else input(a.dpd,6.)	end 
+					as max_dpd
+		,	case when calculated max_dpd  = 0 
+			       or calculated max_dpd = .                  then 'a. Never delinquent'
+				 when calculated max_dpd between 1  and 4     then 'b. Ever 1 & Never 5'
+				 when calculated max_dpd between 5  and 9     then 'c. Ever 5 & Never 10'	
+				 when calculated max_dpd between 10 and 14    then 'd. Ever 10 & Never 15'
+				 when calculated max_dpd between 15 and 19    then 'e. Ever 15 & Never 20'
+				 when calculated max_dpd between 20 and 24    then 'f. Ever 20 & Never 25'
+				 when calculated max_dpd between 25 and 29    then 'g. Ever 25 & Never 30'
+				 when calculated max_dpd between 30 and 59    then 'h. Ever 30 & Never 60'
+				 when calculated max_dpd between 60 and 89    then 'i. Ever 60 & Never 90'
+				 when calculated max_dpd >= 90                then 'j. Ever 90'
+		    else 'k. Other' end as ever_group
+from 		loan_monthend_1 a
+left join 	cfcpub01.tml_ever_del b on a.agreementno = b.agreementno 
+								  and intnx('month',datepart(startdate),-1,'beginning') = b.month
+order by 2,1;
+run;
+;
+run;
+
+
+proc sql;
+update loan_monthend_2 set enr_newlogic = 0, enr = 0 where bucket in ('NA' 'TB6');
+update loan_monthend_2 set enr_newlogic = 0, enr = 0 where (WO = 1 or WO_early = 1);
+update loan_monthend_2 set enr_newlogic = 0, enr = 0 where loanstatus = 'Matured';
+update loan_monthend_2 set enr_newlogic = 0 where enr_newlogic < 0;
+update loan_monthend_2 set enr = 0 where enr < 0;
+run;
+
+
+proc sql;
+create table CR_MONTHEND as
+select 	a.startdate
+		, 	a.report_date
+		, 	a.report_month
+		, 	a.agreementno
+		, 	a.loanstatus
+		, 	a.moa
+		, 	a.moab
+		,	a.casecount
+		, 	mod
+		, 	a.due_day
+		, 	a.first_emi_date
+		,	mob
+		,	a.wo
+		, 	a.mow
+		, 	a.wo_amt
+		, 	a.wo_early
+		, 	a.mow_early
+		, 	a.wo_early_amt
+		, 	a.month_on_wo
+		, 	a.dpd
+		, 	a.bucket
+		, 	a.was_bucket
+		, 	a.prinbalance
+		, 	a.was_prinbalance
+		, 	a.enr
+		, 	a.was_enr
+		, 	a.enr_newlogic
+		, 	a.was_enr_newlogic
+		,	a.arrearint
+		, 	a.arrearprin
+		, 	a.max_dpd
+		, 	a.ever_group
+from 		loan_monthend_2 a
+order by 4,1;
+run;
+
+proc contents data=cfcpub01.tml_PQR_CLOSED_CASES;
+
+data 	PQR_CLOSED_CASES;
+set 	cfcpub01.tml_PQR_CLOSED_CASES;
+drop 	startdate report_date report_month;
+run;
+
+data PQR_CLOSED_CASES;
+set PQR_CLOSED_CASES;
+format startdate datetime20. report_date date9. report_month monyy5.;
+startdate=dhms(intnx("MONTH","&run_date"D,0,"B"),0,0,00);
+report_date = "&run_date"D - 1;
+report_month = intnx("MONTH",report_date,0,"B");
+run;
+
+/*proc sql;*/
+/*update 	PQR_CLOSED_CASES*/
+/*set 	startdate = input('01MAY2019:00:00:00', datetime20.);*/
+/*run;*/
+/**/
+/*update 	PQR_CLOSED_CASES*/
+/*set 	report_date	= '30APR2019'd;*/
+/**/
+/*update 	PQR_CLOSED_CASES*/
+/*set 	report_month = '01APR2019'd;*/
+/*;*/
+/*run;*/
+
+/*proc freq data=CR_MONTHEND; table startdate;*/
+
+proc append base=CR_MONTHEND data=PQR_CLOSED_CASES force;
+
+/* Adjust WO early & WO normal */
+proc sql;
+update CR_MONTHEND
+set 	wo = .
+		, 	mow = .
+		, 	wo_amt = .
+where 	wo = 1 
+and 	wo_early = 1;
+run;
+
+proc sql;
+update cr_monthend 
+set 	wo = 1
+		, 	mow 			= '01SEP2010'd
+		, 	wo_amt 			= 35663200
+		, 	wo_early		=	.
+		, 	mow_early 		=	.
+		, 	wo_early_amt 	=	.
+where 	agreementno = '10123989' 
+and 	startdate >= '01SEP2010'd;
+run; 
+
+proc sql;
+update 	cr_monthend 
+set 	wo = .
+		, 	mow = .
+		, 	wo_amt = .
+		, 	wo_early =.
+		, 	mow_early =.
+		, 	wo_early_amt =.
+where 	agreementno = '10123989' 
+and 	startdate < '01SEP2010'd;
+run; 
+
+proc sql;
+update 	cr_monthend 
+set 	wo = 1
+		, 	mow = '01MAR2012'd
+		, 	wo_amt = 13180300
+		, 	wo_early =.
+		, 	mow_early =.
+		, 	wo_early_amt =.
+where 	agreementno = '10136246' 
+and 	startdate >= '01MAR2012'd;
+run; 
+
+proc sql;
+update 	cr_monthend 
+set 	wo = .
+		, 	mow = .
+		, 	wo_amt = .
+		, 	wo_early =.
+		, 	mow_early =.
+		, 	wo_early_amt =.
+where 	agreementno = '10136246' 
+and 	startdate < '01MAR2012'd;
+run;
+
+proc sql;
+update 	cr_monthend 
+set 	wo = 1	
+		, 	mow = '01APR2014'd
+		, 	wo_amt = 32447000
+		, 	wo_early =.
+		, 	mow_early =.
+		, 	wo_early_amt =.
+where 	agreementno = '10447641' 
+and 	startdate >= '01APR2014'd;
+run; 
+
+proc sql;
+update 	cr_monthend set wo = ., mow = ., wo_amt = ., wo_early =., mow_early =., wo_early_amt =.
+where agreementno = '10447641' and startdate < '01APR2014'd;
+run; 
+
+proc sql;
+update 	cr_monthend set wo = 1, mow = '01MAR2015'd, wo_amt = 98947200, wo_early =., mow_early =., wo_early_amt =.
+where agreementno = '10473774' and startdate >= '01MAR2015'd;
+run; 
+
+proc sql;
+update 	cr_monthend set wo = ., mow = ., wo_amt = ., wo_early =., mow_early =., wo_early_amt =.
+where agreementno = '10473774' and startdate < '01MAR2015'd;
+run; 
+
+proc sql;
+update 	cr_monthend set wo = 1, mow = '01JAN2016'd, wo_amt = 25286875, wo_early =., mow_early =., wo_early_amt =.
+where agreementno = '10477935' and startdate >= '01JAN2016'd;
+run; 
+
+proc sql;
+update 	cr_monthend set wo = ., mow = ., wo_amt = ., wo_early =., mow_early =., wo_early_amt =.
+where agreementno = '10477935' and startdate < '01JAN2016'd;
+run; 
+
+proc sql;
+update 	cr_monthend set wo = 1, mow = '01OCT2015'd, wo_amt = 32734600, wo_early =., mow_early =., wo_early_amt =.
+where agreementno = '10488159' and startdate >= '01OCT2015'd;
+run; 
+
+proc sql;
+update 	cr_monthend set wo = ., mow = ., wo_amt = ., wo_early =., mow_early =., wo_early_amt =.
+where agreementno = '10488159' and startdate < '01OCT2015'd;
+run; 
+
+proc sql;
+update 	cr_monthend set wo = 1, mow = '01JAN2016'd, wo_amt = 18902600, wo_early =., mow_early =., wo_early_amt =.
+where agreementno = '10587107' and startdate >= '01JAN2016'd;
+run; 
+
+proc sql;
+update 	cr_monthend set wo = ., mow = ., wo_amt = ., wo_early =., mow_early =., wo_early_amt =.
+where agreementno = '10587107' and startdate < '01JAN2016'd;
+run; 
+
+proc sql;
+update cr_monthend set wo = 1, mow = '01JUL2016'd, wo_amt = 85361100, wo_early =., mow_early =., wo_early_amt =.
+where agreementno = '10635645' and startdate >= '01JUL2016'd;
+run; 
+
+proc sql;
+update cr_monthend set wo = ., mow = ., wo_amt = ., wo_early =., mow_early =., wo_early_amt =.
+where agreementno = '10635645' and startdate < '01JUL2016'd;
+run; 
+
+proc sql;
+update cr_monthend set wo = 1, mow = '01APR2016'd, wo_amt = 47566600, wo_early =., mow_early =., wo_early_amt =.
+where agreementno = '10670243' and startdate >= '01APR2016'd;
+run; 
+
+proc sql;
+update cr_monthend set wo = ., mow = ., wo_amt = ., wo_early =., mow_early =., wo_early_amt =.
+where agreementno = '10670243' and startdate < '01APR2016'd;
+run; 
+
+proc sql;
+update 	CR_MONTHEND
+set 	month_on_wo = intck('month',max(mow,mow_early),report_month);
+run;
+
+proc sql;
+update CR_MONTHEND set wo = 0, mow = ., wo_amt = ., wo_early =0, mow_early =., wo_early_amt =., month_on_wo=.
+where month_on_wo <= -1;
+run; 
+
+proc append base	=	cfcpub.cr_monthend data	=	cr_monthend force;
+
+/*proc freq data=cfcpub.cr_monthend; tables report_month;*/
+
+
+
+/* FIX MOB */
+
+/*proc freq data= cfcpub.cr_monthend_bk; tables mob;*/
+
+proc contents data=cfcpub.cr_monthend;
+
+proc sql;
+create table CR_MONTHEND as
+select 	a.startdate
+		, 	a.report_date
+		, 	a.report_month
+		, 	a.agreementno
+		, 	a.loanstatus
+		, 	a.moa
+		, 	a.moab
+		,	a.casecount
+		, 	b.mod
+		, 	a.due_day
+		, 	a.first_emi_date
+		,	intck('month',b.mod,a.report_month) as mob
+		,	a.wo
+		, 	a.mow
+		, 	a.wo_amt
+		, 	a.wo_early
+		, 	a.mow_early
+		, 	a.wo_early_amt
+		, 	a.month_on_wo
+		, 	a.dpd
+		, 	a.bucket
+		, 	a.was_bucket
+		, 	a.prinbalance
+		, 	a.was_prinbalance
+		, 	a.enr
+		, 	a.was_enr
+		, 	a.enr_newlogic
+		, 	a.was_enr_newlogic
+		,	a.arrearint
+		, 	a.arrearprin
+		, 	a.max_dpd
+		, 	a.ever_group
+from 		cfcpub.CR_MONTHEND 		a
+left join 	cfcstudy.CR_APPLICATION b on compress(a.agreementno) = compress(b.agreementno)
+order by 4,1;
+run;
+
+data 	cfcpub.cr_monthend;
+set 	cr_monthend;
+run;
+
+/*proc freq data=cfcpub.cr_monthend;tables report_month;*/
+
+/*proc freq data=cfcpub.cr_monthend;tables mod;*/
+
+proc sql;
+delete from CFCPub.CR_MONTHEND where report_month = .; run;
+
+proc datasets lib = work kill;run;
+
+--4
+
+proc freq data=cfcpub01.kc_RECOVERY_PAYMENT; table mon;
+proc contents data=cfcpub01.kc_RECOVERY_PAYMENT; run;
+proc contents data=cfccol01.CFTT_RECOVERY_PAYMENT; run;
+/*data cfcpub01.kc_RECOVERY_PAYMENT; set cfccol01.CFTT_RECOVERY_PAYMENT; run;*/
+proc sql;
+create table CFTT_RECOVERY_PAYMENT as
+select compress(put(LOANNO, 10.)) format $10. as LOANNO, CIF, payment_date, Value_date, PAYMENT_AMT, MON, Bank_ref, HPP_PKEY, PAYMENT_MODE, BANK, Remark, reversal_date, WO_Date
+from cfccol01.CFTT_RECOVERY_PAYMENT;
+run;
+proc append base=cfcpub01.kc_RECOVERY_PAYMENT data=CFTT_RECOVERY_PAYMENT force;
+/*proc sql; delete from cfcpub01.kc_RECOVERY_PAYMENT where LOANNO is null; run;*/
+
+/*proc sql; delete from cfcpub01.kc_rcl_recovery where year = 2019 and month = 8; run;*/
+
+proc sql;
+create table import as
+select 	month(MON) as month,
+		year(MON)  as year,
+		LOANNO as Agreementid,
+		0 as Dr,
+		PAYMENT_AMT as Cr,
+		BANK as Bankname,
+		payment_date as Voucher_dt
+from cfcpub01.kc_RECOVERY_PAYMENT
+/*from WORK.'Recovery Payment May_Jun_19'n*/
+/*from WORK.'Recovery Payment Jun_19'n*/
+where LOANNO is not null and mon = '01Jul2020'd;
+run;
+
+
+
+
+/*update recovery file*/
+/*data temp;*/
+/*set 	WORK.'Template WO Import _ NewCore'n;*/
+/*keep 	month year agreementid dr cr voucher_dt;*/
+/*where 	Agreementid	is not null;*/
+/*run;*/
+
+proc sql;
+create table cfcpub01.kc_WO_PAYMENT_MTD as
+select month
+		,	year
+		,	agreementid
+		,	sum(dr) as dr
+		, 	sum(cr) as cr
+		,	sum(cr)	-	sum(dr) as total_payment
+		,	max(voucher_dt) format date9. as voucher_dt
+from import
+group by 1, 2, 3
+order by 1, 2, 3;
+run;
+
+proc sql;
+create table check1 as
+select		sum(dr)/23172.5 as dr_USD
+		, 	sum(cr)/23172.5 as cr_USD
+		,	(sum(cr)	-	sum(dr))/23172.5 as tt_USD
+from cfcpub01.kc_WO_PAYMENT_MTD;
+run;
+
+/*proc sql;*/
+/*update temp set month=12 where month=11;run;*/
+/*checking if is WO case*/
+proc sql;
+create table checking as
+select 		a.*
+from 		cfcpub01.kc_WO_PAYMENT_MTD a 
+left join 	cfcpub01.tml_WRITEOFF b on compress(a.Agreementid) = compress(b.agreementno)
+where 		b.agreementno is null
+;
+run;
+
+proc contents data=cfcpub01.kc_WO_PAYMENT_MTD;run;
+
+/*proc sql; delete from cfcpub01.kc_rcl_recovery where year = 2019 and month >= 5; run;*/
+proc sql;
+create table checktt as
+select year
+		,	month
+		,	sum(dr)/23172.5 as dr_USD
+		, 	sum(cr)/23172.5 as cr_USD
+		,	(sum(cr)	-	sum(dr))/23172.5 as tt_USD
+from 	cfcpub01.kc_rcl_recovery
+group by 1, 2
+order by 1, 2;
+run;
+
+data 	cfcpub01.kc_rcl_recovery_bk;
+set 	cfcpub01.kc_rcl_recovery;
+run;
+
+/*proc contents data=cfcpub01.kc_rcl_recovery;*/
+/*proc contents data=cfcpub01.kc_rcl_recovery_bk;*/
+
+proc sql;
+create table temp1 as
+select month
+		,	year
+		,	agreementid
+		,	dr
+		,	cr
+from cfcpub01.kc_rcl_recovery;
+run;
+
+proc sql;
+create table temp as
+select month
+		,	year
+		,	Agreementid
+		,	dr
+		,	cr
+from cfcpub01.kc_WO_PAYMENT_MTD;
+run;
+
+data 	cfcpub01.kc_rcl_recovery;
+set 	temp1 temp;
+run;
+
+
+
+/*wo case*/
+
+data wo (rename = (startdate=wodate prinbalance=woprin));
+set cfcpub01.tml_WRITEOFF;
+run;
+
+/*proc freq data=wo;data wodate;*/
+
+
+/*info*/
+proc sql;
+create table wo1 as
+select 	a.*
+		, 	b.moa
+		,   c.product_code 	as product3
+		, 	c.product_name 	as product4
+		, 	b.loanstatus 	as newstatus
+		, 	b.mod
+		, 	put(report_month,monyy5.) as month
+		, 	b.mob
+		, 	b.moab
+		,	loan_amt as first_prin
+		, 	1 as wo
+		, 	c.source
+from 		wo 						a 
+left join 	cfcpub.CR_MONTHEND 		b	on 	a.agreementno		=	b.agreementno 
+										and datepart(a.wodate)	=	datepart(b.startdate)
+left join 	cfcstudy.CR_APPLICATION c 	on 	a.agreementno 		= 	c.agreementno
+;
+quit;
+
+
+
+/*recovery amount*/
+proc sql;
+create table rec as
+select	startdate
+		, 	agreementno
+from 	cfcpub.CR_MONTHEND
+where 	agreementno in (select agreementno from wo1)
+;
+quit;
+
+proc sql;
+create table rec1 as
+select 	a.*
+		, 	b.startdate
+		,	put(datepart(b.startdate)-1,monyy5.) as recoverymth
+		,	month(datepart(b.startdate)-1) as recmonth
+		,	year(datepart(b.startdate)-1) as recyear
+from 		wo1 a 
+left join 	rec b on a.agreementno	=	b.agreementno
+and 		datepart(a.wodate)	<=	datepart(b.startdate)
+;
+quit;
+
+proc sort data		=	rec1;by agreementno startdate;run;
+
+proc sql;
+create table recovery as
+select 	month
+		,	year
+		,	agreementid
+		, 	sum(cr-dr) as amt
+from 	cfcpub01.kc_rcl_recovery
+/*where year = 2015 and month = 5*/
+group by 1,2,3
+order by 2,1,3;
+quit;
+
+
+proc sql;
+create table rec2 as
+select 	a.*
+		,	b.amt as recoveryamt
+from 		rec1 a 
+left join 	recovery b 	on 	compress(a.agreementno)	=	compress(b.agreementid)
+						and a.recmonth	=	b.month 
+						and a.recyear	=	b.year
+;
+quit;
+
+
+/*proc freq data=cfcpub.recovery2_bk; tables recyear*recmonth;*/
+
+
+/*data 	cfcpub.recovery2_bk;*/
+/*set 	cfcpub.recovery2;*/
+/*run;*/
+
+/*proc freq data=cfcpub.recovery2; tables recyear*recmonth;*/
+
+data 	recovery2;
+set 	rec2;
+mow	=	intck('month',datepart(wodate),datepart(startdate));
+if mow in (0 1 2 3 4 14) 		then GRP_MOW = 'Group 1';
+if mow in (5 10 11 13 15 20) 	then GRP_MOW = 'Group 2';
+if mow in (6 7 8 9 16 17) 		then GRP_MOW = 'Group 3';
+if mow in (12 18 19 21 23 27) 	then GRP_MOW = 'Group 4';
+if mow in (22 24 26 31 32 33) 	then GRP_MOW = 'Group 5';
+if mow in (25 28 29 34 35 37) 	then GRP_MOW = 'Group 6';
+if mow in (30 36 38 39 40 42) 	then GRP_MOW = 'Group 7';
+if mow in (43 46 47 49 50 58) 	then GRP_MOW = 'Group 8';
+if mow in (41 44 45 48 52 53) 	then GRP_MOW = 'Group 9';
+if mow in (51 54 55 56 59 60) 	then GRP_MOW = 'Group 10';
+run;
+
+
+proc sort data = recovery2;by agreementno mow;
+
+/*data cfcpub01.recovery2_bak;*/
+/*set cfcpub.recovery2;*/
+/*run;*/
+
+data 	recovery3;
+set 	recovery2;
+by 		agreementno mow;
+if first.agreementno then cum_rec2 = 0; 
+cum_rec2 + recoveryamt;
+*recmonth_sorted = put(datepart(startdate)-1,yymms7.);
+format monthend_sorted monyy5. wodate_sorted monyy5. recmonth_sorted monyy5.;
+
+monthend_sorted = input(month, monyy5.);
+recmonth_sorted = input(recoverymth, monyy5.);
+wodate_sorted 	= input(put(datepart(wodate)-1, monyy5.),monyy5.);
+
+/*format crecmonth monyy5.;*/
+/*crecmonth = mdy(recmonth,1,recyear); */
+run;
+
+proc freq data=recovery3; tables recoverymth;
+
+proc sql;
+update 	recovery3 
+set 	recoveryamt	=	0 
+where 	recoveryamt	=	.;
+quit;
+
+
+proc sql;update recovery3 set product4 = 'PL CELP'       where product = 'CORPIL' ;run;
+proc sql;update recovery3 set product4 = 'PL Insurance'  where product = 'INSPIL' ;run;
+proc sql;update recovery3 set product4 = 'PL Card'       where product = 'CRDPIL' ;run;
+proc sql;update recovery3 set product4 = 'PL Salaried'   where product = 'SALPIL' ;run;
+proc sql;update recovery3 set product4 = 'PL Self-emp'   where product = 'SELPIL' ;run;
+proc sql;update recovery3 set product4 = 'Top-up'        where product = 'PTOPUP' ;run;
+proc sql;update recovery3 set product4 = 'Sales finance' where product in ('FTKSFN','NPRSFN') ;run;
+proc sql;update recovery3 set product4 = 'X-sell'        where product = 'SFXSEL' ;run;
+proc sql;update recovery3 set product4 = 'Mortgage'      where product in ('CORHQT','CORMOR','INSHQT','INSMOR','SALHQT','SALMOR','SELHQT') ;run;
+
+
+proc freq data=recovery3; tables recyear*recmonth;
+proc freq data=recovery3; tables startdate;
+
+data cfcpub01.kc_rcl_recovery2;
+set recovery3;
+run;
+
+data 	cfcpub01.kc_recovery;
+set 	cfcpub01.kc_rcl_recovery2;
+where 	datepart(startdate)>='01JUL15'd;
+run;
+
+/*proc contents data=cfcpub01.kc_recovery;*/
+
+proc sql;
+create table checkamt as
+select recyear
+		,	recmonth
+		,	sum(recoveryamt)/23172.5 as recoveryamt
+from cfcpub01.kc_recovery
+group by 1, 2
+order by 1, 2;
+run;
+
+proc sql;
+create table checkamt as
+select recyear
+		,	recmonth
+		,	sum(recoveryamt)/23172.5 as recoveryamt
+from cfcpub01.kc_rcl_recovery2
+group by 1, 2
+order by 1, 2;
+run;
+
+proc sql;
+create table checkamt as
+select recyear
+		,	recmonth
+		,	sum(recoveryamt)/23172.5 as recoveryamt
+from recovery3
+group by 1, 2
+order by 1, 2;
+run;
+
+
+proc datasets lib = work kill;run;
