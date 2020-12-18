@@ -1,0 +1,177 @@
+/*proc sql;*/
+/*create table KYC_conduct_f1 as*/
+/*select entityid,*/
+/*	   sequenceno  as seq,*/
+/*	   notedate    as note_date,*/
+/*	   notecode    as note_code,*/
+/*	   notedescr   as note_desc,*/
+/*	   notedetails as note_details,*/
+/*	   makerid     as note_user*/
+/*from  etlpub01.CAS_NOTEPAD*/
+/*where notecode like 'KYC'*/
+/*order by 1,4,5,2;*/
+/*run;*/
+/**/
+/*data KYC_conduct_f1_1;*/
+/*set  KYC_conduct_f1;*/
+/*by   entityid note_code note_desc seq;*/
+/*if   last.note_code;*/
+/*run;*/
+/**/
+/*proc sql;*/
+/*create table KYC_prior_f1 as*/
+/*select entityid,*/
+/*	   sequenceno  as seq,*/
+/*	   notedate    as note_date,*/
+/*	   notecode    as note_code,*/
+/*	   notedescr   as note_desc,*/
+/*	   notedetails as note_details,*/
+/*	   makerid     as note_user*/
+/*from  etlpub01.CAS_NOTEPAD*/
+/*where notecode like 'KYC_UND'*/
+/*order by 1,4,5,2;*/
+/*run;*/
+/**/
+/*data KYC_prior_f1_1;*/
+/*set  KYC_prior_f1;*/
+/*by   entityid note_code note_desc seq;*/
+/*if   last.note_code;*/
+/*run;*/
+/**/
+/*proc sql;*/
+/*create table admin_code_f1 as*/
+/*select entityid,*/
+/*	   sequenceno  as seq,*/
+/*	   notedate    as note_date,*/
+/*	   notecode    as note_code,*/
+/*	   notedescr   as note_desc,*/
+/*	   notedetails as note_details,*/
+/*	   makerid     as note_user*/
+/*from  etlpub01.CAS_NOTEPAD*/
+/*where notecode like '%CRR%'*/
+/*order by 1,4,5,2;*/
+/*run;*/
+/**/
+/*data admin_code_f1_1;*/
+/*set  admin_code_f1;*/
+/*by   entityid note_code note_desc seq;*/
+/*if   last.note_code;*/
+/*run;*/
+/**/
+/*proc sql;*/
+/*create table final_f1 as*/
+/*select a.app_id, */
+/*       a.agreementno, */
+/*       case when b.note_code = 'KYC'     then 1                  end as KYC_conduct,*/
+/*	   case when b.note_code = 'KYC'     then b.note_details     end as KYC_conduct_user,*/
+/*       case when c.note_code = 'KYC_UND' then 1                  end as KYC_prior,*/
+/*	   case when c.note_code = 'KYC_UND' then c.note_details     end as KYC_prior_user,*/
+/*       case when d.note_code = 'DTHCRR'  then 1                  end as Admin_courier,*/
+/*	   case when d.note_code = 'DTHCRR'  then d.note_details     end as Admin_courier_name*/
+/*from      cfcpub.cr_application    a*/
+/*left join KYC_conduct_f1_1         b on input(a.app_id,10.)=b.entityid*/
+/*left join KYC_prior_f1_1           c on input(a.app_id,10.)=c.entityid*/
+/*left join admin_code_f1_1          d on input(a.app_id,10.)=d.entityid*/
+/*;*/
+/*quit;*/
+/**/
+/*proc sql;*/
+/*create table dup as*/
+/*select agreementno,count(*) as dup*/
+/*from final_f1*/
+/*group by 1*/
+/*having count(*)>1;*/
+/*quit;*/
+/**/
+/*data cfcpub01.cr_app_kyc_f1(compress=yes);*/
+/*set  final_f1;*/
+/*run;*/
+
+
+proc sql;
+create table KYC_code as
+select appl_ref_num,
+       inputter_id,
+	   comments,
+	   inputter_name,
+	   inputted_date,
+	   note_code
+from  idalpub1.o_trn_ocr_notepad_dtls_prd
+where note_code like '%KYC%'
+order by 1,5,6;
+quit;
+
+data KYC_code_1 (compress=yes);
+set KYC_code;
+by appl_ref_num inputted_date note_code;
+if last.appl_ref_num;
+run;
+
+
+proc sql;
+create table admin_courier_code as
+select appl_ref_num,
+       inputter_id,
+	   comments,
+	   inputter_name,
+	   inputted_date,
+	   note_code
+from  idalpub1.o_trn_ocr_notepad_dtls_prd
+where note_code like '%CRR%'
+order by 1,5,6;
+quit;
+
+data admin_courier_code_1 (compress=yes);
+set admin_courier_code;
+by appl_ref_num inputted_date note_code;
+if last.appl_ref_num;
+run;
+
+proc sql;
+create table cr_app_kyc as
+select a.APPL_REF_NUM as app_id, a.agreementno, 
+       case when b.appl_ref_num is not null then 1 end as KYC_conduct,
+	   case when b.appl_ref_num then b.comments end as KYC_conduct_user,
+       case when c.appl_ref_num is not null then 1 end as Admin_courier,
+	   case when c.appl_ref_num then c.comments end as Admin_courier_name
+
+from cfcstudy.CR_CIF_LOAN a
+left join KYC_code_1 b on a.APPL_REF_NUM=b.appl_ref_num
+left join admin_courier_code_1 c on a.APPL_REF_NUM=c.appl_ref_num
+where a.flag_core = 'new'
+;
+quit;
+
+
+data cr_app_kyc1;
+length admin_courier_name $50
+       KYC_conduct_user $50;
+set cr_app_kyc;
+run;
+
+data cr_app_kyc_f1;
+length admin_courier_name $50
+       KYC_conduct_user $50
+       KYC_prior_user $50;
+set cfcpub01.cr_app_kyc_f1;
+run;
+
+proc sql;
+create table cr_app_kyc as
+select app_id, agreementno, KYC_conduct, KYC_conduct_user, Admin_courier, Admin_courier_name
+from cr_app_kyc1;
+quit;
+
+data cfcstudy.cr_app_kyc ;
+set cr_app_kyc cr_app_kyc_f1;
+run;
+
+proc contents data=cfcstudy.cr_app_kyc;
+
+/*proc sql;*/
+/*create table dup as*/
+/*select agreementno, count(*) as dup*/
+/*from cfcstudy.cr_app_kyc*/
+/*group by 1*/
+/*having count(*)>1;*/
+/*quit;*/
