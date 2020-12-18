@@ -1,0 +1,436 @@
+--cfcstudy.CR_APP_PRODUCTIVITY_TEST
+
+
+proc sql;
+create table get_app as
+select e.appl_ref_num,
+	   a.userid,a.WORKITEMID,a.USERACTION, a.INITIALQUEUEID,a.NEWQUEUEID,
+	   a.USERDATE,a.INITIALDATE,
+       
+	   a.INITIALQUEUEID as cur_id,
+	   a.NEWQUEUEID 	as next_id,
+	   case when b.queuelabel = '' and c.queuelabel = 'Essential Data Entry' then 'Sales Queue'
+	        else b.queuelabel end as cur_stage,
+		c.queuelabel as next_stage,
+
+	   a.INITIALDATE as Start_Time,
+	   a.userdate as End_Time 
+/*	   ,a.USERID*/
+
+
+from IDALPUB1.O_OW_AUDIT_TABLE_PRD a
+left join IDALPUB1.O_OCR_CREDIT_WORKFLOW_MAP_PRD e on a.workitemid = e.work_item_id
+left join IDALPUB1.o_ow_queue_PRD b on a.initialqueueid = b.queueid
+left join IDALPUB1.o_ow_queue_PRD c on a.NEWQUEUEID = c.queueid
+where  USERACTION in ('ROUTE REQ' 'ROUTE') 
+/**/
+/*and  input(appl_ref_num,20.) in( */
+/*1907020001373365*/
+/*)*/
+
+order by workitemid,  userdate
+;run;
+
+data get_route_req get_route;
+set get_app;
+if USERACTION='ROUTE REQ' then output get_route_req;
+if USERACTION='ROUTE' 	  then output get_route;
+run;
+
+
+proc sql;
+delete from get_route_req where USERID  like    '%'||"FRAU"||'%';
+run;
+/*xu ly TH 1Queue chuyển qua 2Queue khác
+Ex: PS-CV/ PS-FV --> PS qua CV
+*/
+
+
+proc sql;
+create table dup_cases as
+select a.*,
+count(*) as cnt
+from get_route a
+group by userid,INITIALQUEUEID,INITIALDATE,USERDATE
+order by workitemid, userdate, cnt;
+
+/*delete dupcases stage FV/ Fraud*/
+delete from dup_cases where   INITIALQUEUEID = 1308 or 
+( NEWQUEUEID=1301 and cnt=2) 
+or (NEWQUEUEID=1308 and cnt=2) 
+or upcase(userid) like '%'||"FRAU"||'%'
+;run;
+
+data get_app_1;
+set dup_cases get_route_req;
+run;
+
+
+proc sort data=get_app_1; by workitemid  userdate;
+
+
+
+data excluded_1;
+set get_app_1;
+format End_time_df datetime20.;
+by workitemid  userdate;
+
+End_time_df=lag(USERDATE);
+if first.workitemid then End_time_df= .;
+
+USERACTION_df=lag(USERACTION);
+if first.workitemid then USERACTION_df= .;
+/*exc1:Flag_excl same time of Route - Route req */
+
+
+if USERACTION='ROUTE REQ' and USERACTION_df='ROUTE' and End_Time=End_time_df then flag_exc1=1;
+else flag_exc1=0;
+;run;
+
+proc sql;
+delete from excluded_1 where flag_exc1=1 ;
+ALTER TABLE excluded_1 drop flag_exc1, End_time_df, USERACTION_df,cnt
+
+;run;
+
+data next_stage;
+set excluded_1;
+format End_time_df datetime20.;
+by workitemid  userdate;
+
+if USERACTION='ROUTE REQ'  then ROUTE_REQ=1;
+else ROUTE_REQ=0;
+
+End_time_df=lag(USERDATE);
+if first.workitemid then End_time_df= .;
+
+/*check xem slg max dòng của Route_req*/
+seq+1;
+if cur_stage^='' then seq=0;
+
+
+/*exc1:Flag_excl same time of Route - Route req */
+
+next_id_df=lag(NEWQUEUEID);
+if first.workitemid then next_id_df= .;
+
+if USERACTION='ROUTE REQ' and End_Time=End_time_df then flag_exc1=1;
+else flag_exc1=0;
+
+
+/*Flag_Queue CV_REQ */
+if 	 (next_id_df^=1300) and   USERACTION='ROUTE REQ' then CV_ROUTE_REQ=0;
+else CV_ROUTE_REQ=1;
+
+;run;
+
+
+
+proc freq data=next_stage; table seq;
+
+proc sql;
+create table next_stage_1 as
+select * from next_stage
+where CV_ROUTE_REQ=1;
+delete	from next_stage_1 where flag_exc1=1;
+run;
+
+
+proc sort data=next_stage_1; by workitemid  userdate;
+
+data get_CV;
+set next_stage_1;
+by workitemid  userdate;
+if USERACTION='ROUTE REQ' then do;
+	INITIALQUEUEID=1300;
+	cur_id=1300;
+	cur_stage='CV Queue';
+	USERACTION='ROUTE';
+end;
+run;
+
+proc sort data=get_CV; by workitemid descending userdate;
+/*check truong hop vua co CV của route và route req*/
+
+data check_CV;
+set get_CV;
+by workitemid descending userdate;
+
+next_id_df_1=lag(INITIALQUEUEID);
+if first.workitemid then next_id_df_1= .;
+
+if next_id_df=1300 and next_id_df_1=1300 then flag_exc2=1;
+else flag_exc2=0;
+run;
+
+
+proc sql;
+delete from check_CV where flag_exc2=1 ;
+ALTER TABLE check_CV drop next_id_df, flag_exc1, next_id_df_1, flag_exc2
+
+;run;
+
+proc sort data=check_CV; by workitemid  descending userdate;
+
+data get_next_stage;
+set check_CV;
+ by workitemid   descending userdate; 
+
+next_id_df=lag(INITIALQUEUEID);
+if first.workitemid then next_id_df= .;
+
+next_stage_df=lag(cur_stage);
+if first.workitemid then next_stage_df= .;
+
+/*next_id of cases CV ROUTE_REQ */
+if next_id=. 		then next_id=next_id_df;
+if NEWQUEUEID=. 	then NEWQUEUEID=next_id_df;
+if next_stage='' 	then next_stage=next_stage_df;
+
+
+run;
+
+proc freq data=get_next_stage; where NEWQUEUEID=.; table INITIALQUEUEID;
+
+proc sort data=get_next_stage ; by workitemid userdate;
+
+/*Fix Start_time of CV/FV  */
+data get_pre_stage;
+set get_next_stage;
+
+by  workitemid  userdate;
+format pre_id 10. pre_time datetime20.;
+
+/*flag cases thuoc FV truoc do CV thuoc ROUTE REQ*/
+ROUTE_REQ_1 = lag(ROUTE_REQ);
+if first.workitemid then ROUTE_REQ_1 ='';
+
+pre_id= lag(cur_id);
+if first.workitemid then pre_id ='';
+
+pre_time = lag(End_time);
+if first.workitemid then pre_time ='';
+
+
+if ROUTE_REQ =1 and Start_time =.    then Start_time=pre_time;/*Fix thoi gian cua CV*/
+else if ROUTE_REQ_1= 1 and cur_stage ^='Sales Queue' then Start_time=pre_time;/*Fix thoi gian cua FV*/
+else Start_time=Start_time;
+
+run;
+
+
+proc sql;
+create table get_pre_stage_1 as
+select 
+	a.APPL_REF_NUM as app_id,
+	a.workitemid,
+	a.pre_id,
+	a.cur_id,
+	a.next_id,
+	case when c.queuelabel = '' and  a.cur_stage= 'Essential Data Entry' then 'Sales Queue'
+	 		else c.queuelabel end as pre_stage,
+	a.cur_stage,
+	b.queuelabel as next_stage,
+	a.userid,
+	a.Start_Time,
+	a.End_Time,
+	a.ROUTE_REQ
+
+from get_pre_stage a
+left join IDALPUB1.O_OW_QUEUE_PRD b on a.next_id = b.queueid
+left join IDALPUB1.O_OW_QUEUE_PRD c on a.pre_id = c.queueid
+order by workitemid, Start_Time, End_Time
+;run;
+
+/*Seq*/
+data get_pre_stage_1;
+set get_pre_stage_1;
+by workitemid Start_Time End_Time;
+format seq 5.;
+seq+1;
+if first.workitemid then seq = 1;
+run;
+
+/*get insert row for next stage of last.app*/
+
+data last_app;
+set get_pre_stage_1;
+by workitemid seq;
+if  last.workitemid;
+run;
+
+data last_app_1;
+set last_app;
+by workitemid seq;
+if next_stage ^='' ;
+run;
+
+
+
+data app_last;
+set last_app_1;
+if next_stage ^='' then do;
+	seq=seq+1;
+	pre_stage=cur_stage;
+	cur_stage=next_stage;
+	next_stage='';
+	userid='';
+	pre_id=cur_id;
+	cur_id=next_id;
+	next_id='';
+	Start_Time=End_Time;
+	End_Time=End_Time;
+end;
+run;
+
+data combine;
+set get_pre_stage_1 app_last;
+run;
+proc sort data=combine out = cfcstudy.CR_APP_PRODUCTIVITY_TEST;by workitemid seq;run;
+
+-- cross_check_ov
+/**/
+/*proc sql; delete from cr_app_productivity_phuong where next_stage='';*/
+/*proc sort data=cr_app_productivity_phuong; by app_id seq;*/
+/*proc transpose data=cr_app_productivity_phuong out=cr_app_productivity_phuong_1; */
+/*by app_id;*/
+/*var cur_id;*/
+/*run;*/
+/**/
+/**/
+/*data cr_app_productivity_phuong_2;*/
+/*set cr_app_productivity_phuong_1;*/
+/*keep app_id combine_ph;*/
+/*combine_ph=catx('-',of col1-col45);*/
+/*combine_ph=tranwrd(combine_ph,'-.','');*/
+/*run;*/
+/**/
+/*proc sql;*/
+/*create table app_productivity_exc_fraud as*/
+/*select * from cfcstudy.CR_APP_PRODUCTIVITY;*/
+/*delete from app_productivity_exc_fraud where  INITIALQUEUEID = 1308 or upcase(userid) like "%FRAU%" */
+/*;run;*/
+/**/
+/*proc sort data=app_productivity_exc_fraud; by app_id seq;*/
+/*proc transpose data=app_productivity_exc_fraud out=cr_app_productivity_1; */
+/*by app_id;*/
+/*var INITIALQUEUEID;*/
+/*run;*/
+/**/
+/**/
+/*data cr_app_productivity_2;*/
+/*set cr_app_productivity_1;*/
+/*keep app_id combine_sys new_name;*/
+/*combine_sys=catx('-',of col1-col43);*/
+/**/
+/*combine_sys=tranwrd(combine_sys,'-.','');*/
+/*;run;*/
+/**/
+/*proc sql;*/
+/*create table mismatch as*/
+/*select a.*,*/
+/*		b.combine_sys,*/
+/*		case when combine_ph like "%1300%" then 'have_CV' else 'no_CV' end as combine_ph_CV,*/
+/*		case when combine_sys like "%1300%" then 'have_CV' else 'no_CV' end as combine_sys_CV,*/
+/**/
+/*		case when a.combine_ph=b.combine_sys then 0 else 1 end as mis,*/
+/*		case when calculated combine_ph_CV ='have_CV' and calculated combine_sys_CV='no_CV' */
+/*		then 'mis_CV' end as reason*/
+/*			*/
+/*from cr_app_productivity_phuong_2 a*/
+/**/
+/*left join cr_app_productivity_2 b on a.app_id=b.app_id*/
+/*;run;*/
+/**/
+/**/
+
+
+
+
+
+/*-----check--------*/
+/*data PS_stage;*/
+/*set next_stage;*/
+/*where USERID like "%CIUPS%";*/
+/**/
+/*run;*/
+/**/
+/*proc sort data=PS_stage; by APPL_REF_NUM USERDATE;*/
+/**/
+/*data PS_stage_check;*/
+/*set PS_stage;*/
+/*by APPL_REF_NUM USERDATE;*/
+/*keep appl_ref_num  USERACTION USERDATE seq_1;*/
+/*seq_1+1;*/
+/*if USERACTION='ROUTE' then seq_1=0*/
+/*;run;*/
+/**/
+/*proc freq data=PS_stage_check; where USERACTION='ROUTE REQ'; table seq_1;*/
+/**/
+/*proc transpose data=PS_stage_check out=PS_stage_check_1; */
+/*by APPL_REF_NUM;*/
+/*var USERACTION;*/
+/*run;*/
+/**/
+/*proc freq data=PS_stage_check_1; table col1*col2;*/
+/**/
+/*data PS_stage_check_2;*/
+/*set PS_stage_check_1;*/
+/*combine=catx('-', _COL_);*/
+/*run;*/
+/**/
+/**/
+/*data ph1;*/
+/*set PS_stage;*/
+/**/
+/*next_USERACTION=lag(USERACTION);*/
+/*if first.workitemid then next_USERACTION= .;*/
+/*combine=catx('-',USERACTION,next_USERACTION);*/
+/*run;*/
+/**/
+/*proc freq data=ph1; table combine;*/
+
+-- cross_check-cases by cases
+
+
+/*proc sql;*/
+/*create table app_productivity_exc_fraud as*/
+/*select * from cfcstudy.CR_APP_PRODUCTIVITY;*/
+/*delete from app_productivity_exc_fraud where  INITIALQUEUEID = 1308 or upcase(userid) like "%FRAU%" */
+/*;run;*/
+/**/
+/*proc sql;*/
+/*create table app_productivity as*/
+/*select app_id*/
+/*		,	INITIAL*/
+/*		,	NEW*/
+/*		,	INITIALDATE*/
+/*		,	USERDATE*/
+/*		,	compress(put(INITIALDATE,datetime20.) ) 				as INITIALDATE1*/
+/*		,	compress(put(USERDATE,datetime20.) 	)	 				as USERDATE1*/
+/*		,	catx('-',INITIAL,NEW) 									as combine_stage*/
+/*		,	catx('-',calculated INITIALDATE1,calculated USERDATE1)	as combine_datetime*/
+/*		, count(*) as cnt*/
+/*from app_productivity_exc_fraud*/
+/**/
+/*group by 1;*/
+/**/
+/*;run;*/
+/**/
+/*proc sql;*/
+/*create table app_productivity_test as*/
+/*select app_id*/
+/*		,	cur_stage*/
+/*		,	next_stage*/
+/*		,	Start_Time*/
+/*		,	compress(put( Start_Time,datetime20.) ) 					as Start_Time1*/
+/*		,	compress(put(End_Time,datetime20.) 	)	 				as End_Time1*/
+/*		,	catx('-',cur_stage,next_stage) 							as combine_stage_test*/
+/*		,	catx('-',calculated Start_Time1,calculated End_Time1)	as combine_datetime_test*/
+/*		, count(*) as cnt_test*/
+/*from cr_app_productivity_phuong*/
+/*where next_stage ^=''*/
+/*group by 1*/
+/*;run;*/
+
+
