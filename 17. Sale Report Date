@@ -1,0 +1,58 @@
+REPORT_DATE
+
+
+proc sql;
+create table date as
+select	put(date,monyy5.) as Month 	
+		,	put(Date,date9.) as Date_rpt
+		,	Date
+		,	Cum_WDay
+from cfcpub.Working_Date 
+where Cum_WDay <= 	(
+						select Cum_WDay
+						from cfcpub.Working_Date 
+						where date = "&sysdate"d-1
+					)
+and 	date between "&sysdate"d  and intnx('month',"&sysdate"d,-2)
+order by put(date,monyy5.), Date;
+run;
+
+data 	date1;
+set 	date;
+by 		month Date;
+if 		last.month;
+run;
+
+proc sort data	=	date1; by Date;
+
+proc rank data	=	date1 out	=	cfcpub.report_date ties=low;
+   var 		Date;
+   ranks 	date;
+run;
+
+/**/
+/*options nodate pageno=1 linesize=80 pagesize=60;*/
+/**/
+/*data cake;*/
+/*   input Name $ 1-10 Present 12-13 Taste 15-16;*/
+/*   datalines;*/
+/*Davis      77 84*/
+/*Orlando    93 80*/
+/*Ramey      68 72*/
+/*Roe        68 75*/
+/*Sanders    56 79*/
+/*Simms      68 77*/
+/*Strickland 82 79*/
+/*;*/
+/**/
+/*proc rank data=cake out=order descending ties=low;*/
+/**/
+/*   var present taste;*/
+/*   ranks PresentRank TasteRank;*/
+/*run;*/
+/**/
+/*proc print data=order;*/
+/*   title "Rankings of Participants' Scores";*/
+/*run;*/
+
+
